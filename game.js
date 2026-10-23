@@ -2749,13 +2749,36 @@ function renderScene(time) {
 // =========================================================================
 // 10. RESIZE & MAIN ANIMATION LOOP
 // =========================================================================
+const actionDockEl = document.getElementById('actionDock');
+const topHudEl = document.getElementById('topHud');
+
+function updateMobileOrientation() {
+  const isLandscape = window.innerWidth > window.innerHeight;
+  // Activate two-thumb layout strictly when on mobile screens in landscape orientation
+  const isMobileLandscape = isLandscape && window.innerHeight <= 560;
+
+  if (isMobileLandscape) {
+    if (actionDockEl && actionDockEl.parentElement !== document.body) {
+      document.body.appendChild(actionDockEl);
+    }
+    document.body.classList.add('mobile-landscape-active');
+  } else {
+    if (actionDockEl && topHudEl && actionDockEl.parentElement !== topHudEl) {
+      topHudEl.appendChild(actionDockEl);
+    }
+    document.body.classList.remove('mobile-landscape-active');
+  }
+}
+
 function resize() {
   const maxDpr = isMobileDevice ? 1.35 : 1.75;
   const dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
   canvas.width = Math.max(1, Math.floor((canvas.clientWidth || window.innerWidth || 800) * dpr));
   canvas.height = Math.max(1, Math.floor((canvas.clientHeight || window.innerHeight || 600) * dpr));
+  updateMobileOrientation();
 }
 window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', () => setTimeout(resize, 100));
 resize();
 updateUI();
 

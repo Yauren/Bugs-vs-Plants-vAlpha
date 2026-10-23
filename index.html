@@ -11,34 +11,31 @@
   <!-- 3D WebGL Voxel Canvas -->
   <canvas id="gameCanvas"></canvas>
 
-  <!-- Responsive Top Bar (Holds Top HUD Stats & Action Controls) -->
-  <div id="topBar">
-    <div id="topHud" class="glass-pill">
-      <div class="hud-stats-group">
-        <div id="dewPill" class="hud-stat text-sky-300" title="Sun Dew (Currency)">
-          <img src="icons/sun_dew.png" class="hud-icon drop-shadow" alt="Dew" />
-          <span id="dewCount" class="hud-val">150</span>
-        </div>
-        <div class="hud-divider"></div>
-        <div class="hud-stat text-emerald-300" title="Current Wave">
-          <img src="icons/green_inchworm.png" class="hud-icon drop-shadow" alt="Wave" />
-          <span class="hud-label">W<span class="hide-xs">ave </span><span id="waveCount" class="hud-val text-white">1</span><span class="text-white/50">/10</span></span>
-          <span id="enemyCounter" class="enemy-badge hidden">0</span>
-        </div>
-        <div class="hud-divider"></div>
-        <div id="livesPill" class="hud-stat text-rose-300" title="Prize Strawberry Health">
-          <img src="icons/prize_strawberry.png" class="hud-icon drop-shadow" alt="Lives" />
-          <span id="livesCount" class="hud-val">10</span>
-        </div>
-        <div class="hud-divider hide-xs"></div>
-        <button id="diffBadgeBtn" class="hud-pill cursor-pointer hide-xs" title="Click to Change Difficulty">
-          <span id="diffBadgeText" class="hud-val text-xs font-bold text-amber-300">Medium</span>
-        </button>
+  <!-- Minimalist Responsive Top HUD Bar -->
+  <div id="topHud" class="glass-pill">
+    <div class="hud-stats-group">
+      <div id="dewPill" class="hud-stat text-sky-300" title="Sun Dew (Currency)">
+        <img src="icons/sun_dew.png" class="hud-icon drop-shadow" alt="Dew" />
+        <span id="dewCount" class="hud-val">150</span>
       </div>
+      <div class="hud-divider"></div>
+      <div class="hud-stat text-emerald-300" title="Current Wave">
+        <img src="icons/green_inchworm.png" class="hud-icon drop-shadow" alt="Wave" />
+        <span class="hud-label">W<span class="hide-xs">ave </span><span id="waveCount" class="hud-val text-white">1</span><span class="text-white/50">/10</span></span>
+        <span id="enemyCounter" class="enemy-badge hidden">0</span>
+      </div>
+      <div class="hud-divider"></div>
+      <div id="livesPill" class="hud-stat text-rose-300" title="Prize Strawberry Health">
+        <img src="icons/prize_strawberry.png" class="hud-icon drop-shadow" alt="Lives" />
+        <span id="livesCount" class="hud-val">10</span>
+      </div>
+      <div class="hud-divider hide-xs"></div>
+      <button id="diffBadgeBtn" class="hud-pill cursor-pointer hide-xs" title="Click to Change Difficulty">
+        <span id="diffBadgeText" class="hud-val text-xs font-bold text-amber-300">Medium</span>
+      </button>
     </div>
 
-    <!-- Action Controls (Inline Top Bar on Desktop, Right-Thumb Dock in Mobile Landscape) -->
-    <div id="actionDock" class="hud-actions-group glass-pill">
+    <div id="actionDock" class="hud-actions-group">
       <button id="waveBtn" class="hud-btn-primary">
         START WAVE 1
       </button>
@@ -221,7 +218,7 @@
     </div>
   </div>
 
-  <script src="models_data.js?v=8"></script>
-  <script src="game.js?v=8"></script>
+  <script src="models_data.js?v=9"></script>
+  <script src="game.js?v=9"></script>
 </body>
 </html>
