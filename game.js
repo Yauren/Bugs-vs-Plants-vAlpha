@@ -548,7 +548,7 @@ function compileShader(type, src) {
   return s;
 }
 
-// --- PASS 1: 1024x1024 Directional Sun Shadow Map Shader (4x faster on mobile GPUs) ---
+// --- PASS 1: 1024x1024 Directional Sun Shadow Map Shader ---
 const SHADOW_RES = 1024;
 const shadowVsSource = `
   attribute vec3 aPos;
@@ -558,7 +558,7 @@ const shadowVsSource = `
   }
 `;
 const shadowFsSource = `
-  precision mediump float;
+  precision highp float;
   vec4 packDepth(float depth) {
     const vec4 bitShift = vec4(256.0*256.0*256.0, 256.0*256.0, 256.0, 1.0);
     const vec4 bitMask  = vec4(0.0, 1.0/256.0, 1.0/256.0, 1.0/256.0);
@@ -621,7 +621,7 @@ const vsSource = `
 `;
 
 const fsSource = `
-  precision mediump float;
+  precision highp float;
   varying vec3 vColor;
   varying vec3 vNormal;
   varying vec2 vUV;
@@ -645,7 +645,7 @@ const fsSource = `
       return 1.0;
     }
     float cosTheta = clamp(dot(N, L), 0.0, 1.0);
-    float bias = max(0.0045 * (1.0 - cosTheta), 0.0018);
+    float bias = max(0.0042 * (1.0 - cosTheta), 0.0015);
     float zTest = proj.z - bias;
     const float off = 0.75 / ${SHADOW_RES}.0;
     float s0 = (zTest > unpackDepth(texture2D(uShadowMap, proj.xy + vec2(-off, -off)))) ? 0.0 : 1.0;
@@ -2678,7 +2678,7 @@ function renderScene(time) {
   gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
   gl.bufferSubData(gl.ARRAY_BUFFER, 0, vertData.subarray(0, vertCount * 11));
 
-  // 2. PASS 1: Render 1024x1024 Directional Sun Shadow Map (Dynamic shadow-casters only!)
+  // 2. PASS 1: Render 1024x1024 Directional Sun Shadow Map
   gl.bindFramebuffer(gl.FRAMEBUFFER, shadowFbo);
   gl.viewport(0, 0, SHADOW_RES, SHADOW_RES);
   gl.clearColor(1.0, 1.0, 1.0, 1.0);
@@ -2687,6 +2687,11 @@ function renderScene(time) {
   gl.useProgram(shadowProg);
   gl.uniformMatrix4fv(shadowLightVPLoc, false, lightVPMatrix);
 
+  if (staticVertCount > 0) {
+    gl.bindBuffer(gl.ARRAY_BUFFER, staticVbo);
+    bindShadowAttribs();
+    gl.drawArrays(gl.TRIANGLES, 0, staticVertCount);
+  }
   if (vertCount > 0) {
     gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
     bindShadowAttribs();
