@@ -1,10 +1,10 @@
-# 🐛 Bug vs Plants (vAlpha) — 3D Voxel Tower Defense
+# Bugs vs Plants — 3D Voxel Tower Defense
 
-A stylized 3D voxel tower defense game built with vanilla **HTML5 WebGL 2.0 & WebAudio** — zero external runtime dependencies, 100% client-side, mobile-touch ready, and deployable on **GitHub Pages**.
+A stylized 3D voxel tower defense game built with vanilla **HTML5 WebGL 2.0 & WebAudio** — zero external runtime dependencies, 100% client-side, and mobile-touch ready.
 
 ---
 
-## 🎮 How to Play
+## How to Play
 
 Defend your prize strawberry at the end of the garden path against 10 waves of hungry caterpillars!
 
@@ -26,36 +26,26 @@ Defend your prize strawberry at the end of the garden path against 10 waves of h
 
 ---
 
-## 🌻 Plant Types
+## Plant Types
 
 | Plant | Cost | Role | Special Effect |
 | :--- | :---: | :--- | :--- |
-| **Pea Sprout** | 💧 50 | Rapid Striker | High fire rate single-target damage |
-| **Frost Bell** | 💧 75 | Area Support | Slows caterpillars by 50% with icy frost shards |
-| **Puff Shroom** | 💧 100 | Area of Effect | Exploding spore cloud dealing splash damage |
-| **Sun Flora** | 💧 125 | Long-Range Sniper | High single-hit solar beam with massive range |
+| **Pea Sprout** | 50 Dew | Rapid Striker | High fire rate single-target damage |
+| **Frost Bell** | 75 Dew | Area Support | Slows caterpillars by 50% with icy frost shards |
+| **Puff Shroom** | 100 Dew | Area of Effect | Exploding spore cloud dealing splash damage |
+| **Sun Flora** | 125 Dew | Long-Range Sniper | High single-hit solar beam with massive range |
 
 ---
 
-## 🐛 Difficulty Levels
+## Difficulty Levels
 
-- **Easy**: 💧 200 starting Dew, ❤️ 15 lives, 0.75× smaller enemy swarms, 0.8× enemy HP.
-- **Medium**: 💧 150 starting Dew, ❤️ 10 lives, standard balanced 10 waves.
-- **Hard**: 💧 120 starting Dew, ❤️ 6 lives, **1.5× swarm size (highest enemy count)**, **1.45× enemy HP**, faster movement speed.
-
----
-
-## 🚀 Deploying to GitHub Pages (Free Hosting)
-
-1. Push this folder to a GitHub repository.
-2. In your repository on GitHub, go to **Settings** → **Pages**.
-3. Under **Branch**, select `main` (or `master`) and folder `/(root)`.
-4. Click **Save**.
-5. Within 1–2 minutes, your game is live at `https://<your-username>.github.io/<repo-name>/`!
+- **Easy**: 200 starting Dew, 15 lives, 0.75x smaller enemy swarms, 0.8x enemy HP.
+- **Medium**: 150 starting Dew, 10 lives, standard balanced 10 waves.
+- **Hard**: 120 starting Dew, 6 lives, **1.5x swarm size (highest enemy count)**, **1.45x enemy HP**, faster movement speed.
 
 ---
 
-## 🎵 Open-Source Assets & Licenses
+## Open-Source Assets & Licenses
 
 - **3D Voxel Models & Animations**: Custom modeled in Blender (`Pea_Sprout`, `Frost_Bell`, `Puff_Shroom`, `Sun_Flora`, `Green_Inchworm`, `Yellow_Sprinter`, `Armored_Beetle`, `Monarch_Boss`, `Prize_Strawberry`, `Grass_Block`, `Hollow_Log`).
 - **Sound & Music**:
