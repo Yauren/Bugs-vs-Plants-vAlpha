@@ -2,6 +2,8 @@
 
 A stylized 3D voxel tower defense game built with vanilla **HTML5 WebGL 2.0 & WebAudio** — zero external runtime dependencies, 100% client-side, and mobile-touch ready.
 
+![Bugs vs Plants Gameplay](screenshot.png)
+
 ---
 
 ## How to Play
