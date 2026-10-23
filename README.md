@@ -1,4 +1,4 @@
-# 🌸 Bloom & Bite — 3D Voxel Tower Defense
+# 🐛 Bug vs Plants (vAlpha) — 3D Voxel Tower Defense
 
 A stylized 3D voxel tower defense game built with vanilla **HTML5 WebGL 2.0 & WebAudio** — zero external runtime dependencies, 100% client-side, mobile-touch ready, and deployable on **GitHub Pages**.
 
