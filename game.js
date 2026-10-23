@@ -4,19 +4,19 @@
 // Uses WebAudio AudioBuffers + rich dual-oscillator synthesis routed through
 // WebAudio GainNodes (never uses sfx100v2_air_01/02.ogg or white-noise hiss).
 const CC0_SFX_MANIFEST = {
-  plant:   { url: 'audio/sfx100v2_footstep_wet_01.ogg', vol: 0.75, rate: 1.15 },
-  upgrade: { url: 'audio/sfx100v2_items_01.ogg',        vol: 0.80, rate: 1.05 },
-  uproot:  { url: 'audio/sfx100v2_footstep_wet_02.ogg', vol: 0.75, rate: 0.92 },
-  select:  { url: 'audio/sfx100v2_switch_01.ogg',       vol: 0.65, rate: 1.15 },
+  plant:   { url: 'audio/sfx100v2_footstep_wet_01.ogg', vol: 0.45, rate: 1.15 },
+  upgrade: { url: 'audio/sfx100v2_items_01.ogg',        vol: 0.48, rate: 1.05 },
+  uproot:  { url: 'audio/sfx100v2_footstep_wet_02.ogg', vol: 0.45, rate: 0.92 },
+  select:  { url: 'audio/sfx100v2_switch_01.ogg',       vol: 0.38, rate: 1.15 },
   // Crisp percussive pops & chimes (replaces air_01/air_02 so there is zero hushing sound)
-  shoot:   { url: 'audio/sfx100v2_wood_04.ogg',         vol: 0.75, rate: 1.35 },
-  shoot_0: { url: 'audio/sfx100v2_wood_04.ogg',         vol: 0.75, rate: 1.35 }, // Pea Sprout crisp pop
-  shoot_1: { url: 'audio/sfx100v2_glass_02.ogg',        vol: 0.70, rate: 1.30 }, // Frost Bell ice chime
-  shoot_2: { url: 'audio/sfx100v2_wood_hit_02.ogg',     vol: 0.78, rate: 1.10 }, // Puff Shroom punchy thud
-  shoot_3: { url: 'audio/sfx100v2_items_02.ogg',        vol: 0.70, rate: 1.40 }, // Sun Flora warm chime
-  pop:     { url: 'audio/sfx100v2_wood_hit_01.ogg',     vol: 0.80, rate: 1.25 },
-  bite:    { url: 'audio/sfx100v2_hit_03.ogg',          vol: 0.85, rate: 0.95 },
-  wave:    { url: 'audio/sfx100v2_items_02.ogg',        vol: 0.80, rate: 0.90 }
+  shoot:   { url: 'audio/sfx100v2_wood_04.ogg',         vol: 0.42, rate: 1.35 },
+  shoot_0: { url: 'audio/sfx100v2_wood_04.ogg',         vol: 0.42, rate: 1.35 }, // Pea Sprout crisp pop
+  shoot_1: { url: 'audio/sfx100v2_glass_02.ogg',        vol: 0.40, rate: 1.30 }, // Frost Bell ice chime
+  shoot_2: { url: 'audio/sfx100v2_wood_hit_02.ogg',     vol: 0.44, rate: 1.10 }, // Puff Shroom punchy thud
+  shoot_3: { url: 'audio/sfx100v2_items_02.ogg',        vol: 0.40, rate: 1.40 }, // Sun Flora warm chime
+  pop:     { url: 'audio/sfx100v2_wood_hit_01.ogg',     vol: 0.45, rate: 1.25 },
+  bite:    { url: 'audio/sfx100v2_hit_03.ogg',          vol: 0.48, rate: 0.95 },
+  wave:    { url: 'audio/sfx100v2_items_02.ogg',        vol: 0.45, rate: 0.90 }
 };
 
 class EndlessGardenMusic {
@@ -27,15 +27,15 @@ class EndlessGardenMusic {
     this.nextNoteTime = 0;
     this.timerId = null;
 
-    // Master volume gain node balanced underneath plant SFX
+    // Master volume gain node balanced comfortably underneath game SFX
     this.masterGain = ctx.createGain();
-    this.masterGain.gain.setValueAtTime(0.38, ctx.currentTime);
+    this.masterGain.gain.setValueAtTime(0.30, ctx.currentTime);
     this.masterGain.connect(ctx.destination);
   }
 
   setMuted(muted) {
     if (this.masterGain && this.ctx) {
-      this.masterGain.gain.setTargetAtTime(muted ? 0.0 : 0.38, this.ctx.currentTime, 0.04);
+      this.masterGain.gain.setTargetAtTime(muted ? 0.0 : 0.30, this.ctx.currentTime, 0.04);
     }
   }
 
@@ -186,7 +186,7 @@ class SoundFX {
       if (AudioCtx) {
         this.ctx = new AudioCtx();
         this.sfxGain = this.ctx.createGain();
-        this.sfxGain.gain.setValueAtTime(1.0, this.ctx.currentTime);
+        this.sfxGain.gain.setValueAtTime(0.52, this.ctx.currentTime);
         this.sfxGain.connect(this.ctx.destination);
         this.musicEngine = new EndlessGardenMusic(this.ctx);
         this.loadBuffers();
@@ -247,6 +247,7 @@ class SoundFX {
     this.lastPlayed[type] = now;
 
     // 1. Play decoded WebAudio sample buffer if available (routed through GainNode, zero DOM overhead)
+    let bufferPlayed = false;
     const cfg = CC0_SFX_MANIFEST[type];
     const buf = this.buffers[type];
     if (cfg && buf) {
@@ -259,10 +260,14 @@ class SoundFX {
         src.connect(smpGain);
         smpGain.connect(this.sfxGain);
         src.start(now);
+        bufferPlayed = true;
       } catch (e) {}
     }
 
-    // 2. Always play loud, crisp WebAudio synthesized layer so plant SFX cut cleanly through BGM on all devices
+    // If sample was successfully played from buffer, avoid double-triggering synth on top
+    if (bufferPlayed) return;
+
+    // 2. Fallback WebAudio synthesized layer (used on devices/browsers where OGG buffer is not supported)
     const osc = this.ctx.createOscillator();
     const osc2 = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
@@ -277,7 +282,7 @@ class SoundFX {
       osc.frequency.exponentialRampToValueAtTime(760, now + 0.13);
       osc2.frequency.setValueAtTime(465, now);
       osc2.frequency.exponentialRampToValueAtTime(1140, now + 0.13);
-      gain.gain.setValueAtTime(0.85, now);
+      gain.gain.setValueAtTime(0.40, now);
       gain.gain.exponentialRampToValueAtTime(0.01, now + 0.14);
       osc.start(now);
       osc2.start(now);
@@ -294,7 +299,7 @@ class SoundFX {
       osc2.frequency.setValueAtTime(1108.73, now + 0.065);
       osc2.frequency.setValueAtTime(1318.5, now + 0.13);
       osc2.frequency.setValueAtTime(1760.0, now + 0.195);
-      gain.gain.setValueAtTime(0.85, now);
+      gain.gain.setValueAtTime(0.42, now);
       gain.gain.exponentialRampToValueAtTime(0.01, now + 0.28);
       osc.start(now);
       osc2.start(now);
@@ -307,7 +312,7 @@ class SoundFX {
       osc.frequency.exponentialRampToValueAtTime(190, now + 0.14);
       osc2.frequency.setValueAtTime(780, now);
       osc2.frequency.exponentialRampToValueAtTime(285, now + 0.14);
-      gain.gain.setValueAtTime(0.80, now);
+      gain.gain.setValueAtTime(0.38, now);
       gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
       osc.start(now);
       osc2.start(now);
@@ -320,21 +325,21 @@ class SoundFX {
       osc.frequency.exponentialRampToValueAtTime(860, now + 0.055);
       osc2.frequency.setValueAtTime(1160, now);
       osc2.frequency.exponentialRampToValueAtTime(1720, now + 0.055);
-      gain.gain.setValueAtTime(0.70, now);
+      gain.gain.setValueAtTime(0.32, now);
       gain.gain.exponentialRampToValueAtTime(0.01, now + 0.06);
       osc.start(now);
       osc2.start(now);
       osc.stop(now + 0.06);
       osc2.stop(now + 0.06);
     } else if (type === 'shoot' || type === 'shoot_0') {
-      // Pea Sprout: crisp, punchy high-clarity cork-pop (zero air hiss!)
+      // Pea Sprout: crisp, gentle cork-pop
       osc.type = 'triangle';
       osc2.type = 'sine';
       osc.frequency.setValueAtTime(720, now);
       osc.frequency.exponentialRampToValueAtTime(260, now + 0.085);
       osc2.frequency.setValueAtTime(1080, now);
       osc2.frequency.exponentialRampToValueAtTime(390, now + 0.085);
-      gain.gain.setValueAtTime(0.82, now);
+      gain.gain.setValueAtTime(0.38, now);
       gain.gain.exponentialRampToValueAtTime(0.01, now + 0.09);
       osc.start(now);
       osc2.start(now);
@@ -348,21 +353,21 @@ class SoundFX {
       osc.frequency.exponentialRampToValueAtTime(1480, now + 0.10);
       osc2.frequency.setValueAtTime(1960, now);
       osc2.frequency.exponentialRampToValueAtTime(2460, now + 0.10);
-      gain.gain.setValueAtTime(0.76, now);
+      gain.gain.setValueAtTime(0.35, now);
       gain.gain.exponentialRampToValueAtTime(0.01, now + 0.11);
       osc.start(now);
       osc2.start(now);
       osc.stop(now + 0.11);
       osc2.stop(now + 0.11);
     } else if (type === 'shoot_2') {
-      // Puff Shroom: bouncy resonant spore thump-pop (audible on small speakers, zero hiss)
+      // Puff Shroom: bouncy resonant spore thump-pop
       osc.type = 'triangle';
       osc2.type = 'sine';
       osc.frequency.setValueAtTime(420, now);
       osc.frequency.exponentialRampToValueAtTime(155, now + 0.11);
       osc2.frequency.setValueAtTime(840, now);
       osc2.frequency.exponentialRampToValueAtTime(310, now + 0.11);
-      gain.gain.setValueAtTime(0.88, now);
+      gain.gain.setValueAtTime(0.40, now);
       gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
       osc.start(now);
       osc2.start(now);
@@ -376,7 +381,7 @@ class SoundFX {
       osc.frequency.exponentialRampToValueAtTime(960, now + 0.09);
       osc2.frequency.setValueAtTime(930, now);
       osc2.frequency.exponentialRampToValueAtTime(1440, now + 0.09);
-      gain.gain.setValueAtTime(0.78, now);
+      gain.gain.setValueAtTime(0.36, now);
       gain.gain.exponentialRampToValueAtTime(0.01, now + 0.10);
       osc.start(now);
       osc2.start(now);
@@ -389,7 +394,7 @@ class SoundFX {
       osc.frequency.exponentialRampToValueAtTime(780, now + 0.085);
       osc2.frequency.setValueAtTime(680, now);
       osc2.frequency.exponentialRampToValueAtTime(1320, now + 0.085);
-      gain.gain.setValueAtTime(0.85, now);
+      gain.gain.setValueAtTime(0.40, now);
       gain.gain.exponentialRampToValueAtTime(0.01, now + 0.09);
       osc.start(now);
       osc2.start(now);
@@ -402,7 +407,7 @@ class SoundFX {
       osc.frequency.linearRampToValueAtTime(95, now + 0.16);
       osc2.frequency.setValueAtTime(360, now);
       osc2.frequency.linearRampToValueAtTime(140, now + 0.16);
-      gain.gain.setValueAtTime(0.85, now);
+      gain.gain.setValueAtTime(0.42, now);
       gain.gain.exponentialRampToValueAtTime(0.01, now + 0.18);
       osc.start(now);
       osc2.start(now);
@@ -417,7 +422,7 @@ class SoundFX {
       osc2.frequency.setValueAtTime(659.25, now);
       osc2.frequency.setValueAtTime(880.0, now + 0.08);
       osc2.frequency.setValueAtTime(1108.73, now + 0.16);
-      gain.gain.setValueAtTime(0.82, now);
+      gain.gain.setValueAtTime(0.40, now);
       gain.gain.exponentialRampToValueAtTime(0.01, now + 0.28);
       osc.start(now);
       osc2.start(now);
