@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Bloom &amp; Bite — Voxel 3D Tower Defense</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="relative w-screen h-screen overflow-hidden text-white">
+
+  <!-- 3D WebGL Voxel Canvas -->
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- Minimalist Responsive Top HUD Bar -->
+  <div id="topHud" class="glass-pill">
+    <div class="hud-stats-group">
+      <div id="dewPill" class="hud-stat text-sky-300" title="Sun Dew (Currency)">
+        <img src="icons/sun_dew.png" class="hud-icon drop-shadow" alt="Dew" />
+        <span id="dewCount" class="hud-val">150</span>
+      </div>
+      <div class="hud-divider"></div>
+      <div class="hud-stat text-emerald-300" title="Current Wave">
+        <img src="icons/green_inchworm.png" class="hud-icon drop-shadow" alt="Wave" />
+        <span class="hud-label">W<span class="hide-xs">ave </span><span id="waveCount" class="hud-val text-white">1</span><span class="text-white/50">/10</span></span>
+        <span id="enemyCounter" class="enemy-badge hidden">0</span>
+      </div>
+      <div class="hud-divider"></div>
+      <div id="livesPill" class="hud-stat text-rose-300" title="Prize Strawberry Health">
+        <img src="icons/prize_strawberry.png" class="hud-icon drop-shadow" alt="Lives" />
+        <span id="livesCount" class="hud-val">10</span>
+      </div>
+      <div class="hud-divider hide-xs"></div>
+      <button id="diffBadgeBtn" class="hud-pill cursor-pointer hide-xs" title="Click to Change Difficulty">
+        <span id="diffBadgeText" class="hud-val text-xs font-bold text-amber-300">Medium</span>
+      </button>
+    </div>
+
+    <div class="hud-actions-group">
+      <button id="waveBtn" class="hud-btn-primary">
+        START WAVE 1
+      </button>
+      <button id="autoWaveBtn" class="hud-btn-secondary" title="Toggle Auto Wave (A)">
+        AUTO: OFF
+      </button>
+      <button id="speedBtn" class="hud-btn-icon" title="Toggle Game Speed (1x / 2x)">
+        1x
+      </button>
+      <button id="pauseBtn" class="hud-btn-icon" title="Pause / Resume Game (P)">
+        ⏸
+      </button>
+      <button id="musicBtn" class="hud-btn-icon active-pill" title="Toggle Background Music (M)">
+        🎵
+      </button>
+      <button id="soundBtn" class="hud-btn-icon active-pill" title="Toggle Sound Effects">
+        🔊
+      </button>
+      <button id="resetCamMobileBtn" class="hud-btn-icon sm-hide" title="Reset Camera View">
+        🎥
+      </button>
+    </div>
+  </div>
+
+  <!-- Non-Intrusive Status / Feedback Toast Pill -->
+  <div id="toastBanner" class="toast-banner">
+    🌱 Tap/Click grass to plant • Right-Drag: Orbit • Press [1–4] again to unselect
+  </div>
+
+  <!-- Subtle Camera Hint (Desktop Top Right) -->
+  <div class="cam-hint-pill glass-pill hide-mobile">
+    <span class="text-emerald-300 font-semibold">Right Drag: Orbit</span>
+    <span>•</span>
+    <span>Middle Drag: Pan</span>
+    <span>•</span>
+    <span>Scroll: Zoom</span>
+    <button id="resetCamBtn" class="cam-reset-btn">Reset</button>
+  </div>
+
+  <!-- Contextual Selected Tower Pill (Appears when tapping/clicking a planted tower) -->
+  <div id="towerMenu" class="tower-menu glass-pill hidden">
+    <div class="tower-menu-info">
+      <div class="tower-menu-icon-wrap">
+        <img id="menuPlantIcon" src="icons/pea_sprout.png" class="w-full h-full object-contain drop-shadow" alt="Selected Plant" />
+      </div>
+      <div>
+        <div id="menuPlantName" class="font-bold text-sm text-emerald-300">Pea Sprout (Lv.1)</div>
+        <div id="menuPlantStats" class="text-white/70 text-xs font-medium mt-0.5">DMG 20 • Range 2.9</div>
+      </div>
+    </div>
+    <div class="tower-menu-actions">
+      <button id="upgradeBtn" class="tower-up-btn">
+        Upgrade (💧 43)
+      </button>
+      <button id="sellBtn" class="tower-sell-btn">
+        Uproot (+💧 38)
+      </button>
+      <button id="closeMenuBtn" class="tower-close-btn" title="Deselect (Esc)">✕</button>
+    </div>
+  </div>
+
+  <!-- Responsive Bottom Plant Dock (Desktop Tactile Cards / Mobile 4-Column Touch Grid) -->
+  <div id="plantDock" class="plant-dock glass-pill">
+    <button data-plant="0" class="plant-btn selected">
+      <div class="plant-icon-box bg-emerald-500/15 border-emerald-400/30">
+        <img src="icons/pea_sprout.png" class="w-full h-full object-contain drop-shadow-md" alt="Pea Sprout" />
+        <span class="plant-key-badge hide-mobile">1</span>
+      </div>
+      <div class="plant-meta">
+        <div class="plant-title">Pea Sprout</div>
+        <div class="plant-cost">💧 50 <span class="plant-role">• Fast</span></div>
+      </div>
+    </button>
+
+    <button data-plant="1" class="plant-btn">
+      <div class="plant-icon-box bg-cyan-500/15 border-cyan-400/30">
+        <img src="icons/frost_bell.png" class="w-full h-full object-contain drop-shadow-md" alt="Frost Bell" />
+        <span class="plant-key-badge hide-mobile">2</span>
+      </div>
+      <div class="plant-meta">
+        <div class="plant-title">Frost Bell</div>
+        <div class="plant-cost">💧 75 <span class="plant-role">• Slows</span></div>
+      </div>
+    </button>
+
+    <button data-plant="2" class="plant-btn">
+      <div class="plant-icon-box bg-purple-500/15 border-purple-400/30">
+        <img src="icons/puff_shroom.png" class="w-full h-full object-contain drop-shadow-md" alt="Puff Shroom" />
+        <span class="plant-key-badge hide-mobile">3</span>
+      </div>
+      <div class="plant-meta">
+        <div class="plant-title">Puff Shroom</div>
+        <div class="plant-cost">💧 100 <span class="plant-role">• Splash</span></div>
+      </div>
+    </button>
+
+    <button data-plant="3" class="plant-btn">
+      <div class="plant-icon-box bg-amber-500/15 border-amber-400/30">
+        <img src="icons/sun_flora.png" class="w-full h-full object-contain drop-shadow-md" alt="Sun Flora" />
+        <span class="plant-key-badge hide-mobile">4</span>
+      </div>
+      <div class="plant-meta">
+        <div class="plant-title">Sun Flora</div>
+        <div class="plant-cost">💧 125 <span class="plant-role">• Sniper</span></div>
+      </div>
+    </button>
+  </div>
+
+  <!-- Victory / Defeat Modal Overlay -->
+  <div id="overlayModal" class="fixed inset-0 z-30 hidden items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div class="glass-pill rounded-3xl p-7 max-w-sm w-full mx-4 text-center border border-white/20">
+      <div id="modalEmoji" class="text-4xl mb-2">🌸</div>
+      <h2 id="modalTitle" class="text-xl font-bold mb-1">Garden Saved!</h2>
+      <p id="modalDesc" class="text-sm text-white/70 mb-5">Your voxel plants defended the prize strawberry against every hungry caterpillar wave.</p>
+      <div class="flex gap-2.5">
+        <button id="restartBtn" class="flex-1 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm transition cursor-pointer">
+          Play Again
+        </button>
+        <button id="changeDiffBtn" class="py-2.5 px-4 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm transition cursor-pointer border border-white/20">
+          Difficulty
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Initial Difficulty Selection Menu Modal (Shown on Launch) -->
+  <div id="difficultyModal" class="fixed inset-0 z-40 flex items-center justify-center bg-black/80 backdrop-blur-md">
+    <div class="glass-pill rounded-3xl p-6 sm:p-7 max-w-lg w-full mx-4 text-center border border-white/20 shadow-2xl">
+      <h2 class="text-base sm:text-lg font-bold text-white mb-4">Select Difficulty</h2>
+
+      <div class="diff-grid mb-5 text-left">
+        <!-- Easy -->
+        <button type="button" class="diff-card" data-diff="easy">
+          <div class="diff-card-header">
+            <span class="diff-card-title text-emerald-300">Easy</span>
+          </div>
+          <p class="diff-card-desc">Fewer pests, extra starting Dew.</p>
+          <div class="diff-card-stats">
+            <div>💧 200 Dew</div>
+            <div>❤️ 15 Lives</div>
+            <div class="text-emerald-400">🐛 0.75× Swarms</div>
+            <div class="text-emerald-400">🛡️ 0.8× HP</div>
+          </div>
+        </button>
+
+        <!-- Medium (Selected by default) -->
+        <button type="button" class="diff-card selected" data-diff="medium">
+          <div class="diff-card-header">
+            <span class="diff-card-title text-amber-300">Medium</span>
+          </div>
+          <p class="diff-card-desc">Standard balanced challenge.</p>
+          <div class="diff-card-stats">
+            <div>💧 150 Dew</div>
+            <div>❤️ 10 Lives</div>
+            <div>🐛 Standard Waves</div>
+            <div>🛡️ 1.0× HP</div>
+          </div>
+        </button>
+
+        <!-- Hard (Highest amount of enemies & stronger) -->
+        <button type="button" class="diff-card" data-diff="hard">
+          <div class="diff-card-header">
+            <span class="diff-card-title text-rose-300">Hard</span>
+          </div>
+          <p class="diff-card-desc">Largest swarms, stronger enemies.</p>
+          <div class="diff-card-stats">
+            <div>💧 120 Dew</div>
+            <div>❤️ 6 Lives</div>
+            <div class="text-rose-400 font-bold">🐛 1.5× Swarms!</div>
+            <div class="text-rose-400 font-bold">🛡️ 1.45× HP + Spd</div>
+          </div>
+        </button>
+      </div>
+
+      <button id="startGameBtn" class="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-sm tracking-wide transition cursor-pointer shadow-lg shadow-emerald-500/30">
+        START GAME (MEDIUM)
+      </button>
+    </div>
+  </div>
+
+  <script src="models_data.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
