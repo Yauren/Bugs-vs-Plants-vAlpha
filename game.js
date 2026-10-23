@@ -1634,12 +1634,13 @@ canvas.addEventListener('wheel', (e) => {
   camDist = Math.max(7.2, Math.min(20.0, camDist + e.deltaY * 0.008));
 }, { passive: false });
 
-// --- Mobile & Tablet Multi-Touch Controls (1-Finger Tap/Orbit, 2-Finger Pinch Zoom & Pan) ---
-let touchMode = 0; // 0: none, 1: single-finger, 2: two-finger pinch/pan
+// --- Mobile & Tablet Multi-Touch Controls (1-Finger Tap/Orbit, 2-Finger Pinch Zoom, Rotate & Pan) ---
+let touchMode = 0; // 0: none, 1: single-finger, 2: two-finger pinch/rotate/pan
 let touchStartX = 0, touchStartY = 0;
 let touchLastX = 0, touchLastY = 0;
 let touchMoved = false;
 let lastPinchDist = 0;
+let lastPinchAngle = 0;
 let lastPinchMidX = 0, lastPinchMidY = 0;
 
 canvas.addEventListener('touchstart', (e) => {
@@ -1656,6 +1657,7 @@ canvas.addEventListener('touchstart', (e) => {
     touchMoved = true;
     const t0 = e.touches[0], t1 = e.touches[1];
     lastPinchDist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+    lastPinchAngle = Math.atan2(t1.clientY - t0.clientY, t1.clientX - t0.clientX);
     lastPinchMidX = (t0.clientX + t1.clientX) * 0.5;
     lastPinchMidY = (t0.clientY + t1.clientY) * 0.5;
   }
@@ -1683,14 +1685,23 @@ canvas.addEventListener('touchmove', (e) => {
     touchMoved = true;
     const t0 = e.touches[0], t1 = e.touches[1];
     const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+    const angle = Math.atan2(t1.clientY - t0.clientY, t1.clientX - t0.clientX);
     const midX = (t0.clientX + t1.clientX) * 0.5;
     const midY = (t0.clientY + t1.clientY) * 0.5;
 
+    // 1. Two-finger pinch zoom
     if (lastPinchDist > 10) {
       const deltaDist = lastPinchDist - dist;
       camDist = Math.max(7.2, Math.min(20.0, camDist + deltaDist * 0.032));
     }
 
+    // 2. Two-finger twist / rotate camera yaw
+    let deltaAngle = angle - lastPinchAngle;
+    if (deltaAngle > Math.PI) deltaAngle -= Math.PI * 2;
+    else if (deltaAngle < -Math.PI) deltaAngle += Math.PI * 2;
+    camYaw -= deltaAngle * 1.25;
+
+    // 3. Two-finger pan
     const dx = midX - lastPinchMidX;
     const dy = midY - lastPinchMidY;
     const panSpeed = (camDist / Math.max(300, canvas.clientHeight)) * 1.45;
@@ -1703,6 +1714,7 @@ canvas.addEventListener('touchmove', (e) => {
     camTargetZ = Math.max(-4, Math.min(4, camTargetZ - (rightZ * dx - fwdZ * dy) * panSpeed));
 
     lastPinchDist = dist;
+    lastPinchAngle = angle;
     lastPinchMidX = midX;
     lastPinchMidY = midY;
     hoverTile = null;
