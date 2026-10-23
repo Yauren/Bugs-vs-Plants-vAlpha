@@ -11,9 +11,9 @@ const CC0_SFX_MANIFEST = {
   upgrade: { url: 'audio/sfx100v2_items_01.ogg',        vol: 0.95, rate: 1.10 },
   uproot:  { url: 'audio/sfx100v2_footstep_wet_02.ogg', vol: 0.90, rate: 0.92 },
   select:  { url: 'audio/sfx100v2_switch_01.ogg',       vol: 0.85, rate: 1.20 },
-  shoot_0: { url: 'audio/sfx100v2_air_01.ogg',          vol: 0.85, rate: 1.35 }, // Pea Sprout
-  shoot_1: { url: 'audio/sfx100v2_glass_02.ogg',        vol: 0.85, rate: 1.25 }, // Frost Bell
-  shoot_2: { url: 'audio/sfx100v2_air_02.ogg',          vol: 0.90, rate: 0.95 }, // Puff Shroom
+  shoot_0: { url: 'audio/sfx100v2_air_01.ogg',          vol: 0.35, rate: 1.35 }, // Pea Sprout (softened air puff)
+  shoot_1: { url: 'audio/sfx100v2_glass_02.ogg',        vol: 0.65, rate: 1.25 }, // Frost Bell
+  shoot_2: { url: 'audio/sfx100v2_air_02.ogg',          vol: 0.35, rate: 0.95 }, // Puff Shroom (softened air puff)
   shoot_3: { url: 'audio/sfx100v2_items_02.ogg',        vol: 0.85, rate: 1.30 }, // Sun Flora
   pop:     { url: 'audio/sfx100v2_wood_hit_01.ogg',     vol: 0.95, rate: 1.22 },
   bite:    { url: 'audio/sfx100v2_hit_03.ogg',          vol: 1.00, rate: 0.90 },
@@ -151,21 +151,22 @@ class EndlessGardenMusic {
       osc2.stop(time + 0.40);
     }
 
-    // 4. Subtle Garden Rhythm Shaker on off-beats
+    // 4. Very Soft Garden Rhythm Shaker on off-beats (lowered to avoid harsh hushing on mobile/iPad speakers)
     if (step % 2 === 1) {
-      const bufferSize = Math.floor(this.ctx.sampleRate * 0.04);
+      const bufferSize = Math.floor(this.ctx.sampleRate * 0.025);
       const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
       const data = buffer.getChannelData(0);
       for (let i = 0; i < bufferSize; i++) {
-        data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.35));
+        data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.25));
       }
       const noise = this.ctx.createBufferSource();
       noise.buffer = buffer;
       const filter = this.ctx.createBiquadFilter();
-      filter.type = 'highpass';
-      filter.frequency.setValueAtTime(5800, time);
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(2200, time);
+      filter.Q.setValueAtTime(1.2, time);
       const nGain = this.ctx.createGain();
-      nGain.gain.setValueAtTime(0.07, time);
+      nGain.gain.setValueAtTime(0.008, time); // Lowered by ~90%
       noise.connect(filter);
       filter.connect(nGain);
       nGain.connect(this.masterGain);
