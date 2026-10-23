@@ -1,24 +1,8 @@
 // =========================================================================
-// 1. OPEN-SOURCE CC0 AUDIO + WEBAUDIO SYNTHESIS ENGINE (BGM & SFX)
+// 1. PURE WEBAUDIO SYNTHESIS ENGINE (ZERO-NOISE BGM & SFX FOR ALL DEVICES)
 // =========================================================================
-// Open-Source CC0 Assets in ./audio/ (Public Domain / CC0 1.0):
-// - bgm_garden_calm.ogg   : "Greens are good for you" (OpenGameArt CC0 Calm/Relaxing Music)
-// - bgm_tower_defense.ogg : "DST - Tower Defense Theme" (OpenGameArt CC0 Tower Defense Theme)
-// - sfx100v2_*.ogg        : "100 CC0 SFX #2" by rubberduck (OpenGameArt CC0)
-// High-volume mastering + WebAudio procedural fallback for standalone HTML previews.
-const CC0_SFX_MANIFEST = {
-  plant:   { url: 'audio/sfx100v2_footstep_wet_01.ogg', vol: 0.90, rate: 1.15 },
-  upgrade: { url: 'audio/sfx100v2_items_01.ogg',        vol: 0.95, rate: 1.10 },
-  uproot:  { url: 'audio/sfx100v2_footstep_wet_02.ogg', vol: 0.90, rate: 0.92 },
-  select:  { url: 'audio/sfx100v2_switch_01.ogg',       vol: 0.85, rate: 1.20 },
-  shoot_0: { url: 'audio/sfx100v2_air_01.ogg',          vol: 0.35, rate: 1.35 }, // Pea Sprout (softened air puff)
-  shoot_1: { url: 'audio/sfx100v2_glass_02.ogg',        vol: 0.65, rate: 1.25 }, // Frost Bell
-  shoot_2: { url: 'audio/sfx100v2_air_02.ogg',          vol: 0.35, rate: 0.95 }, // Puff Shroom (softened air puff)
-  shoot_3: { url: 'audio/sfx100v2_items_02.ogg',        vol: 0.85, rate: 1.30 }, // Sun Flora
-  pop:     { url: 'audio/sfx100v2_wood_hit_01.ogg',     vol: 0.95, rate: 1.22 },
-  bite:    { url: 'audio/sfx100v2_hit_03.ogg',          vol: 1.00, rate: 0.90 },
-  wave:    { url: 'audio/sfx100v2_items_02.ogg',        vol: 0.95, rate: 0.95 }
-};
+// Uses 100% pure WebAudio oscillators & GainNodes (no HTMLAudioElement .ogg clones
+// or white-noise buffers, preventing the compressed-air hushing sound and DOM stalls on iPad/iOS).
 
 class EndlessGardenMusic {
   constructor(ctx) {
@@ -28,15 +12,15 @@ class EndlessGardenMusic {
     this.nextNoteTime = 0;
     this.timerId = null;
 
-    // High master volume gain node for loud, clear garden music
+    // Master volume gain node for clean, warm garden music
     this.masterGain = ctx.createGain();
-    this.masterGain.gain.setValueAtTime(0.70, ctx.currentTime);
+    this.masterGain.gain.setValueAtTime(0.62, ctx.currentTime);
     this.masterGain.connect(ctx.destination);
   }
 
   setMuted(muted) {
     if (this.masterGain && this.ctx) {
-      this.masterGain.gain.setTargetAtTime(muted ? 0.0 : 0.70, this.ctx.currentTime, 0.04);
+      this.masterGain.gain.setTargetAtTime(muted ? 0.0 : 0.62, this.ctx.currentTime, 0.04);
     }
   }
 
@@ -63,12 +47,12 @@ class EndlessGardenMusic {
       this.nextNoteTime += 0.23; // ~130 BPM groove
       this.step = (this.step + 1) % 64; // Endless 64-step (4-bar) loop
     }
-    this.timerId = setTimeout(() => this.scheduler(), 35);
+    this.timerId = setTimeout(() => this.scheduler(), 50);
   }
 
   scheduleStep(step, time) {
     // 4 Chords: Cmaj (0-15), Gmaj (16-31), Amin (32-47), Fmaj (48-63)
-    const chordIdx = Math.floor(step / 16);
+    const chordIdx = step >> 4;
     const chordBases = [261.63, 196.00, 220.00, 174.61]; // C4, G3, A3, F3
     const chordFrequencies = [
       [261.63, 329.63, 392.00, 523.25], // C Major
@@ -80,39 +64,39 @@ class EndlessGardenMusic {
     // 1. Warm Soft Chord Pad on each bar (steps 0, 16, 32, 48)
     if (step % 16 === 0) {
       const chord = chordFrequencies[chordIdx];
-      chord.forEach((freq) => {
+      for (let i = 0; i < chord.length; i++) {
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(freq, time);
+        osc.frequency.setValueAtTime(chord[i], time);
         gain.gain.setValueAtTime(0.001, time);
-        gain.gain.linearRampToValueAtTime(0.09, time + 0.35);
+        gain.gain.linearRampToValueAtTime(0.08, time + 0.35);
         gain.gain.exponentialRampToValueAtTime(0.001, time + 3.4);
         osc.connect(gain);
         gain.connect(this.masterGain);
         osc.start(time);
-        osc.stop(time + 3.5);
-      });
+        osc.stop(time + 3.45);
+      }
     }
 
     // 2. Punchy Bouncy Bass on every 4th step (steps 0, 4, 8, 12, etc.)
     if (step % 4 === 0) {
       const isRoot = step % 8 === 0;
-      const rootFreq = chordBases[chordIdx] * 0.5; // Deep sub-bass root
+      const rootFreq = chordBases[chordIdx] * 0.5;
       const bassFreq = isRoot ? rootFreq : rootFreq * 1.5;
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(bassFreq, time);
-      gain.gain.setValueAtTime(0.38, time);
-      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.48);
+      gain.gain.setValueAtTime(0.32, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.46);
       osc.connect(gain);
       gain.connect(this.masterGain);
       osc.start(time);
-      osc.stop(time + 0.50);
+      osc.stop(time + 0.48);
     }
 
-    // 3. Crisp Marimba / Kalimba Garden Melody Note
+    // 3. Crisp Marimba / Kalimba Garden Melody Note (zero white noise / shaker hiss)
     const melodyPattern = [
       0, null, 4, 7,  null, 9, 7, 4,  2, null, 4, 0,  null, 2, 4, null,
       7, null, 9, 12, null, 9, 7, 4,  7, null, 4, 2,  null, 0, 2, null,
@@ -128,7 +112,6 @@ class EndlessGardenMusic {
       ];
       const freq = cMajorScale[melDegree % cMajorScale.length];
 
-      // Dual oscillator bell/marimba chime
       const osc1 = this.ctx.createOscillator();
       const osc2 = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
@@ -138,8 +121,8 @@ class EndlessGardenMusic {
       osc1.frequency.setValueAtTime(freq, time);
       osc2.frequency.setValueAtTime(freq * 2, time);
 
-      gain.gain.setValueAtTime(0.36, time);
-      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.38);
+      gain.gain.setValueAtTime(0.30, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.36);
 
       osc1.connect(gain);
       osc2.connect(gain);
@@ -147,30 +130,8 @@ class EndlessGardenMusic {
 
       osc1.start(time);
       osc2.start(time);
-      osc1.stop(time + 0.40);
-      osc2.stop(time + 0.40);
-    }
-
-    // 4. Very Soft Garden Rhythm Shaker on off-beats (lowered to avoid harsh hushing on mobile/iPad speakers)
-    if (step % 2 === 1) {
-      const bufferSize = Math.floor(this.ctx.sampleRate * 0.025);
-      const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-      const data = buffer.getChannelData(0);
-      for (let i = 0; i < bufferSize; i++) {
-        data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.25));
-      }
-      const noise = this.ctx.createBufferSource();
-      noise.buffer = buffer;
-      const filter = this.ctx.createBiquadFilter();
-      filter.type = 'bandpass';
-      filter.frequency.setValueAtTime(2200, time);
-      filter.Q.setValueAtTime(1.2, time);
-      const nGain = this.ctx.createGain();
-      nGain.gain.setValueAtTime(0.008, time); // Lowered by ~90%
-      noise.connect(filter);
-      filter.connect(nGain);
-      nGain.connect(this.masterGain);
-      noise.start(time);
+      osc1.stop(time + 0.38);
+      osc2.stop(time + 0.38);
     }
   }
 }
@@ -180,21 +141,9 @@ class SoundFX {
     this.enabled = true;
     this.musicEnabled = true;
     this.ctx = null;
+    this.sfxGain = null;
     this.musicEngine = null;
-    this.sfxBuffers = {};
-    this.preloadSFX();
-  }
-
-  preloadSFX() {
-    Object.keys(CC0_SFX_MANIFEST).forEach((key) => {
-      try {
-        const cfg = CC0_SFX_MANIFEST[key];
-        const a = new Audio(cfg.url);
-        a.preload = 'auto';
-        a.volume = cfg.vol;
-        this.sfxBuffers[key] = a;
-      } catch (_) {}
-    });
+    this.lastPlayed = {};
   }
 
   ensureAudio() {
@@ -202,6 +151,9 @@ class SoundFX {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       if (AudioCtx) {
         this.ctx = new AudioCtx();
+        this.sfxGain = this.ctx.createGain();
+        this.sfxGain.gain.setValueAtTime(0.45, this.ctx.currentTime);
+        this.sfxGain.connect(this.ctx.destination);
         this.musicEngine = new EndlessGardenMusic(this.ctx);
         if (this.musicEnabled) {
           this.musicEngine.start();
@@ -221,14 +173,13 @@ class SoundFX {
   }
 
   heartbeat() {
-    // Called continuously on every animation frame to ensure music NEVER stops
     if (!this.musicEnabled) return;
-    this.ensureAudio();
+    if (this.ctx && this.ctx.state === 'suspended') {
+      this.ctx.resume().catch(() => {});
+    }
   }
 
-  setBgmMode(mode) {
-    // Endless music keeps playing seamlessly without stopping
-  }
+  setBgmMode(mode) {}
 
   playMusic() {
     this.ensureAudio();
@@ -252,31 +203,24 @@ class SoundFX {
   play(type) {
     if (!this.enabled) return;
     this.init();
+    if (!this.ctx || !this.sfxGain) return;
 
-    // Play CC0 .ogg sample if available
-    const sample = this.sfxBuffers[type];
-    if (sample) {
-      try {
-        const cfg = CC0_SFX_MANIFEST[type] || { vol: 0.95, rate: 1.0 };
-        const clone = sample.cloneNode();
-        clone.volume = Math.min(1.0, cfg.vol);
-        clone.playbackRate = cfg.rate * (0.96 + Math.random() * 0.08);
-        clone.play().catch(() => {});
-      } catch (_) {}
-    }
-
-    if (!this.ctx) return;
     const now = this.ctx.currentTime;
+    // Throttle identical sound effects to avoid overlapping distortion during heavy waves
+    const minGap = type.startsWith('shoot') ? 0.065 : 0.04;
+    if (this.lastPlayed[type] && now - this.lastPlayed[type] < minGap) return;
+    this.lastPlayed[type] = now;
+
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
     osc.connect(gain);
-    gain.connect(this.ctx.destination);
+    gain.connect(this.sfxGain);
 
     if (type === 'plant') {
       osc.type = 'sine';
       osc.frequency.setValueAtTime(320, now);
       osc.frequency.exponentialRampToValueAtTime(640, now + 0.11);
-      gain.gain.setValueAtTime(0.55, now);
+      gain.gain.setValueAtTime(0.45, now);
       gain.gain.linearRampToValueAtTime(0.001, now + 0.12);
       osc.start(now);
       osc.stop(now + 0.12);
@@ -285,7 +229,7 @@ class SoundFX {
       osc.frequency.setValueAtTime(392.0, now);
       osc.frequency.setValueAtTime(523.25, now + 0.06);
       osc.frequency.setValueAtTime(659.25, now + 0.12);
-      gain.gain.setValueAtTime(0.60, now);
+      gain.gain.setValueAtTime(0.50, now);
       gain.gain.linearRampToValueAtTime(0.001, now + 0.24);
       osc.start(now);
       osc.stop(now + 0.24);
@@ -293,7 +237,7 @@ class SoundFX {
       osc.type = 'sine';
       osc.frequency.setValueAtTime(420, now);
       osc.frequency.exponentialRampToValueAtTime(180, now + 0.12);
-      gain.gain.setValueAtTime(0.50, now);
+      gain.gain.setValueAtTime(0.42, now);
       gain.gain.linearRampToValueAtTime(0.001, now + 0.13);
       osc.start(now);
       osc.stop(now + 0.13);
@@ -301,71 +245,71 @@ class SoundFX {
       osc.type = 'sine';
       osc.frequency.setValueAtTime(540, now);
       osc.frequency.exponentialRampToValueAtTime(720, now + 0.045);
-      gain.gain.setValueAtTime(0.40, now);
+      gain.gain.setValueAtTime(0.32, now);
       gain.gain.linearRampToValueAtTime(0.001, now + 0.05);
       osc.start(now);
       osc.stop(now + 0.05);
     } else if (type === 'shoot' || type === 'shoot_0') {
-      // Pea Sprout crisp pop
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(540, now);
-      osc.frequency.exponentialRampToValueAtTime(195, now + 0.06);
-      gain.gain.setValueAtTime(0.45, now);
-      gain.gain.linearRampToValueAtTime(0.001, now + 0.065);
+      // Pea Sprout soft melodic pop
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(480, now);
+      osc.frequency.exponentialRampToValueAtTime(210, now + 0.055);
+      gain.gain.setValueAtTime(0.28, now);
+      gain.gain.linearRampToValueAtTime(0.001, now + 0.06);
       osc.start(now);
-      osc.stop(now + 0.065);
+      osc.stop(now + 0.06);
     } else if (type === 'shoot_1') {
-      // Frost Bell icy crystal chime
+      // Frost Bell soft crystal chime
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(980, now);
-      osc.frequency.exponentialRampToValueAtTime(1480, now + 0.08);
-      gain.gain.setValueAtTime(0.42, now);
-      gain.gain.linearRampToValueAtTime(0.001, now + 0.09);
-      osc.start(now);
-      osc.stop(now + 0.09);
-    } else if (type === 'shoot_2') {
-      // Puff Shroom deep spore puff
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(260, now);
-      osc.frequency.exponentialRampToValueAtTime(95, now + 0.11);
-      gain.gain.setValueAtTime(0.52, now);
-      gain.gain.linearRampToValueAtTime(0.001, now + 0.12);
-      osc.start(now);
-      osc.stop(now + 0.12);
-    } else if (type === 'shoot_3') {
-      // Sun Flora solar beam hum
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(660, now);
-      osc.frequency.exponentialRampToValueAtTime(880, now + 0.07);
-      gain.gain.setValueAtTime(0.40, now);
+      osc.frequency.setValueAtTime(880, now);
+      osc.frequency.exponentialRampToValueAtTime(1240, now + 0.07);
+      gain.gain.setValueAtTime(0.24, now);
       gain.gain.linearRampToValueAtTime(0.001, now + 0.08);
       osc.start(now);
       osc.stop(now + 0.08);
+    } else if (type === 'shoot_2') {
+      // Puff Shroom gentle warm puff
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(250, now);
+      osc.frequency.exponentialRampToValueAtTime(110, now + 0.09);
+      gain.gain.setValueAtTime(0.32, now);
+      gain.gain.linearRampToValueAtTime(0.001, now + 0.10);
+      osc.start(now);
+      osc.stop(now + 0.10);
+    } else if (type === 'shoot_3') {
+      // Sun Flora warm chime
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(580, now);
+      osc.frequency.exponentialRampToValueAtTime(780, now + 0.065);
+      gain.gain.setValueAtTime(0.26, now);
+      gain.gain.linearRampToValueAtTime(0.001, now + 0.07);
+      osc.start(now);
+      osc.stop(now + 0.07);
     } else if (type === 'pop') {
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(240, now);
-      osc.frequency.exponentialRampToValueAtTime(590, now + 0.07);
-      gain.gain.setValueAtTime(0.55, now);
-      gain.gain.linearRampToValueAtTime(0.001, now + 0.08);
+      osc.frequency.setValueAtTime(260, now);
+      osc.frequency.exponentialRampToValueAtTime(560, now + 0.065);
+      gain.gain.setValueAtTime(0.38, now);
+      gain.gain.linearRampToValueAtTime(0.001, now + 0.075);
       osc.start(now);
-      osc.stop(now + 0.08);
+      osc.stop(now + 0.075);
     } else if (type === 'bite') {
-      osc.type = 'sawtooth';
+      osc.type = 'triangle';
       osc.frequency.setValueAtTime(170, now);
-      osc.frequency.linearRampToValueAtTime(85, now + 0.18);
-      gain.gain.setValueAtTime(0.65, now);
-      gain.gain.linearRampToValueAtTime(0.001, now + 0.2);
+      osc.frequency.linearRampToValueAtTime(85, now + 0.16);
+      gain.gain.setValueAtTime(0.50, now);
+      gain.gain.linearRampToValueAtTime(0.001, now + 0.18);
       osc.start(now);
-      osc.stop(now + 0.2);
+      osc.stop(now + 0.18);
     } else if (type === 'wave') {
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(261.6, now);
       osc.frequency.setValueAtTime(329.6, now + 0.08);
       osc.frequency.setValueAtTime(392.0, now + 0.16);
-      gain.gain.setValueAtTime(0.60, now);
-      gain.gain.linearRampToValueAtTime(0.001, now + 0.3);
+      gain.gain.setValueAtTime(0.45, now);
+      gain.gain.linearRampToValueAtTime(0.001, now + 0.28);
       osc.start(now);
-      osc.stop(now + 0.3);
+      osc.stop(now + 0.28);
     }
   }
 }
@@ -447,7 +391,7 @@ const Mat4 = {
     return out;
   },
   invert(out, m) {
-    const inv = new Float32Array(16);
+    const inv = _mat4InvTmp;
     inv[0] = m[5]*m[10]*m[15] - m[5]*m[11]*m[14] - m[9]*m[6]*m[15] + m[9]*m[7]*m[14] + m[13]*m[6]*m[11] - m[13]*m[7]*m[10];
     inv[4] = -m[4]*m[10]*m[15] + m[4]*m[11]*m[14] + m[8]*m[6]*m[15] - m[8]*m[7]*m[14] - m[12]*m[6]*m[11] + m[12]*m[7]*m[10];
     inv[8] = m[4]*m[9]*m[15] - m[4]*m[11]*m[13] - m[8]*m[5]*m[15] + m[8]*m[7]*m[13] + m[12]*m[5]*m[11] - m[12]*m[7]*m[9];
@@ -471,12 +415,18 @@ const Mat4 = {
     return out;
   }
 };
+const _mat4InvTmp = new Float32Array(16);
 
 // =========================================================================
 // 3. CUSTOM WEBGL STYLIZED PBR + SHADOW-MAPPED VOXEL RENDERER
 // =========================================================================
+const isMobileDevice = /Android|iPhone|iPad|iPod|Mobile|Tablet/i.test(navigator.userAgent || '') || (navigator.maxTouchPoints && navigator.maxTouchPoints > 1);
 const canvas = document.getElementById('gameCanvas');
-const gl = canvas.getContext('webgl', { antialias: true, alpha: false });
+const gl = canvas.getContext('webgl', {
+  antialias: !isMobileDevice,
+  alpha: false,
+  powerPreference: 'high-performance'
+});
 
 function compileShader(type, src) {
   const s = gl.createShader(type);
@@ -485,8 +435,8 @@ function compileShader(type, src) {
   return s;
 }
 
-// --- PASS 1: 2048x2048 Directional Sun Shadow Map Shader ---
-const SHADOW_RES = 2048;
+// --- PASS 1: 1024x1024 Directional Sun Shadow Map Shader (4x faster on mobile GPUs) ---
+const SHADOW_RES = 1024;
 const shadowVsSource = `
   attribute vec3 aPos;
   uniform mat4 uLightVP;
@@ -495,7 +445,7 @@ const shadowVsSource = `
   }
 `;
 const shadowFsSource = `
-  precision highp float;
+  precision mediump float;
   vec4 packDepth(float depth) {
     const vec4 bitShift = vec4(256.0*256.0*256.0, 256.0*256.0, 256.0, 1.0);
     const vec4 bitMask  = vec4(0.0, 1.0/256.0, 1.0/256.0, 1.0/256.0);
@@ -533,7 +483,7 @@ gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, sha
 gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, shadowDepthRB);
 gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-// --- PASS 2: Stylized PBR + 3x3 PCF Soft Shadow + Dynamic Point-Light Shader ---
+// --- PASS 2: Stylized PBR + Fast 4-Tap PCF Soft Shadow + Dynamic Point-Light Shader ---
 const MAX_POINT_LIGHTS = 12;
 const vsSource = `
   attribute vec3 aPos;
@@ -558,7 +508,7 @@ const vsSource = `
 `;
 
 const fsSource = `
-  precision highp float;
+  precision mediump float;
   varying vec3 vColor;
   varying vec3 vNormal;
   varying vec2 vUV;
@@ -582,17 +532,14 @@ const fsSource = `
       return 1.0;
     }
     float cosTheta = clamp(dot(N, L), 0.0, 1.0);
-    float bias = max(0.0042 * (1.0 - cosTheta), 0.0016);
-    float texel = 1.0 / ${SHADOW_RES}.0;
-    float shadow = 0.0;
-    for (int x = -1; x <= 1; x++) {
-      for (int y = -1; y <= 1; y++) {
-        vec2 uv = proj.xy + vec2(float(x), float(y)) * texel * 1.25;
-        float closest = unpackDepth(texture2D(uShadowMap, uv));
-        shadow += (proj.z - bias > closest) ? 0.0 : 1.0;
-      }
-    }
-    return shadow / 9.0;
+    float bias = max(0.0045 * (1.0 - cosTheta), 0.0018);
+    float zTest = proj.z - bias;
+    const float off = 0.75 / ${SHADOW_RES}.0;
+    float s0 = (zTest > unpackDepth(texture2D(uShadowMap, proj.xy + vec2(-off, -off)))) ? 0.0 : 1.0;
+    float s1 = (zTest > unpackDepth(texture2D(uShadowMap, proj.xy + vec2( off, -off)))) ? 0.0 : 1.0;
+    float s2 = (zTest > unpackDepth(texture2D(uShadowMap, proj.xy + vec2(-off,  off)))) ? 0.0 : 1.0;
+    float s3 = (zTest > unpackDepth(texture2D(uShadowMap, proj.xy + vec2( off,  off)))) ? 0.0 : 1.0;
+    return (s0 + s1 + s2 + s3) * 0.25;
   }
 
   void main() {
@@ -603,60 +550,60 @@ const fsSource = `
     float minEdge = min(edgeDist.x, edgeDist.y);
     float bevelMask = 1.0 - smoothstep(0.0, 0.085, minEdge);
 
-    // Build tangent-like bevel perturbation so voxel edges catch specular sunlight
     vec3 upAxis = abs(N.y) > 0.9 ? vec3(1.0, 0.0, 0.0) : vec3(0.0, 1.0, 0.0);
     vec3 T = normalize(cross(upAxis, N));
     vec3 B = cross(N, T);
     vec3 bevelN = normalize(N + (T * uvCentered.x + B * uvCentered.y) * bevelMask * 0.42);
 
     // 2. Key Sun Light & Soft PCF Shadow
-    vec3 sunDir = normalize(vec3(0.52, 0.86, 0.42));
-    vec3 sunColor = vec3(1.04, 0.98, 0.88);
+    const vec3 sunDir = vec3(0.4776, 0.7899, 0.3858);
+    const vec3 sunColor = vec3(1.04, 0.98, 0.88);
     float NdotL = max(dot(bevelN, sunDir), 0.0);
     float shadow = computeShadow(vLightSpacePos, N, sunDir);
 
     // 3. View Vector, Blinn-Phong Specular & Grazing Fresnel Rim
-    vec3 V = normalize(uEyePos - vWorldPos);
+    vec3 toEye = uEyePos - vWorldPos;
+    float camDist = length(toEye);
+    vec3 V = toEye / max(camDist, 0.001);
     vec3 H = normalize(sunDir + V);
-    float spec = pow(max(dot(bevelN, H), 0.0), 36.0) * (0.18 + bevelMask * 0.24) * shadow;
-    float fresnel = pow(1.0 - max(dot(bevelN, V), 0.0), 3.2);
+    float spec = pow(max(dot(bevelN, H), 0.0), 32.0) * (0.18 + bevelMask * 0.24) * shadow;
+    float oneMinusNV = 1.0 - max(dot(bevelN, V), 0.0);
+    float fresnel = oneMinusNV * oneMinusNV * oneMinusNV;
     vec3 rimLight = vec3(0.55, 0.82, 0.68) * fresnel * (0.22 + 0.25 * max(N.y, 0.0));
 
     // 4. Foliage Subsurface Scattering / Backlight Warmth
-    float backLight = pow( clamp(dot(V, -sunDir), 0.0, 1.0), 2.5 ) * max(0.0, vWorldPos.y + 0.05);
+    float backDot = clamp(dot(V, -sunDir), 0.0, 1.0);
+    float backLight = (backDot * backDot) * max(0.0, vWorldPos.y + 0.05);
     vec3 sss = vColor * vec3(1.0, 0.92, 0.45) * backLight * 0.26;
 
     // 5. Sky Hemisphere + Warm Turf Ground Bounce + Vertical Contact AO
     float skyFactor = 0.5 + 0.5 * bevelN.y;
-    vec3 skyCol = vec3(0.68, 0.84, 0.96);
-    vec3 groundBounce = vec3(0.32, 0.44, 0.28);
+    const vec3 skyCol = vec3(0.68, 0.84, 0.96);
+    const vec3 groundBounce = vec3(0.32, 0.44, 0.28);
     vec3 hemiAmbient = mix(groundBounce, skyCol, skyFactor);
 
-    // Fill light from opposite cool side
-    vec3 fillDir = normalize(vec3(-0.6, 0.35, -0.5));
+    const vec3 fillDir = vec3(-0.6999, 0.4083, -0.5832);
     float fillDiff = max(dot(bevelN, fillDir), 0.0) * 0.16;
 
-    // Ground root contact ambient occlusion near y = 0
     float rootAO = mix(0.76, 1.0, smoothstep(-0.08, 0.38, vWorldPos.y));
     float edgeCavity = mix(0.86, 1.0, smoothstep(0.0, 0.065, minEdge));
     float ao = rootAO * edgeCavity;
 
-    // 6. Dynamic Colored Point Lights (Projectiles, Sun Flora, Frost Bell, Strawberry)
+    // 6. Dynamic Colored Point Lights (Early-out break + squared distance rejection)
     vec3 pointDiffuse = vec3(0.0);
-    vec3 pointSpec = vec3(0.0);
     for (int i = 0; i < ${MAX_POINT_LIGHTS}; i++) {
       vec4 lp = uPointLightPos[i];
-      if (lp.w <= 0.01) continue;
+      if (lp.w <= 0.01) break;
       vec3 toLight = lp.xyz - vWorldPos;
-      float dist = length(toLight);
-      if (dist < lp.w) {
+      float distSq = dot(toLight, toLight);
+      float radSq = lp.w * lp.w;
+      if (distSq < radSq) {
+        float dist = sqrt(distSq);
         vec3 Lpt = toLight / max(dist, 0.001);
-        float atten = pow(1.0 - dist / lp.w, 2.0);
+        float t = 1.0 - dist / lp.w;
+        float atten = t * t;
         float pDiff = max(dot(bevelN, Lpt), 0.0) * 0.7 + 0.3;
-        pointDiffuse += uPointLightCol[i] * pDiff * atten;
-        vec3 Hpt = normalize(Lpt + V);
-        float pSpec = pow(max(dot(bevelN, Hpt), 0.0), 24.0) * atten * 0.25;
-        pointSpec += uPointLightCol[i] * pSpec;
+        pointDiffuse += uPointLightCol[i] * (pDiff * atten);
       }
     }
 
@@ -665,17 +612,14 @@ const fsSource = `
     vec3 indirect = (hemiAmbient * 0.50 + vec3(0.75, 0.85, 0.95) * fillDiff) * ao;
     vec3 litColor = vColor * (indirect + directSun * 0.78 + pointDiffuse * 0.85)
                   + sunColor * spec
-                  + pointSpec
                   + rimLight * ao
                   + sss;
 
     // 8. Subtle Atmospheric Garden Horizon Blend & Filmic Tone Polish
-    float camDist = length(uEyePos - vWorldPos);
     float fogFactor = smoothstep(18.0, 34.0, camDist) * 0.35;
-    vec3 fogColor = vec3(0.11, 0.16, 0.14);
+    const vec3 fogColor = vec3(0.11, 0.16, 0.14);
     litColor = mix(litColor, fogColor, fogFactor);
 
-    // Subtle filmic S-curve contrast boost
     litColor = clamp(litColor, 0.0, 1.5);
     litColor = litColor / (1.0 + litColor * 0.18) * 1.14;
 
@@ -688,6 +632,10 @@ gl.attachShader(prog, compileShader(gl.VERTEX_SHADER, vsSource));
 gl.attachShader(prog, compileShader(gl.FRAGMENT_SHADER, fsSource));
 gl.linkProgram(prog);
 gl.useProgram(prog);
+
+// Enable hardware backface culling (all models have strict CCW winding)
+gl.enable(gl.CULL_FACE);
+gl.cullFace(gl.BACK);
 
 const aPosLoc = gl.getAttribLocation(prog, 'aPos');
 const aNormalLoc = gl.getAttribLocation(prog, 'aNormal');
@@ -703,12 +651,12 @@ const uPointLightColLoc = gl.getUniformLocation(prog, 'uPointLightCol[0]');
 const pointLightPosData = new Float32Array(MAX_POINT_LIGHTS * 4);
 const pointLightColData = new Float32Array(MAX_POINT_LIGHTS * 3);
 
-const MAX_VERTS = 450000;
+const MAX_VERTS = 260000;
 const vertData = new Float32Array(MAX_VERTS * 11);
 let vertCount = 0;
 const vbo = gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
-gl.bufferData(gl.ARRAY_BUFFER, vertData.byteLength, gl.DYNAMIC_DRAW);
+gl.bufferData(gl.ARRAY_BUFFER, 90000 * 11 * 4, gl.DYNAMIC_DRAW);
 
 const staticVbo = gl.createBuffer();
 let staticVertCount = 0;
@@ -744,44 +692,74 @@ const CUBE_FACES = [
 const FACE_UVS = [[0,0], [1,0], [1,1], [0,1]];
 const FACE_INDICES = [0, 1, 2, 0, 2, 3];
 
+// Helper to emit a quad (2 triangles = 6 vertices = 66 floats) with zero inner-loop overhead
+function emitQuad(
+  x0, y0, z0, x1, y1, z1, x2, y2, z2, x3, y3, z3,
+  nx, ny, nz, r, g, b
+) {
+  let o = vertCount * 11;
+  // Tri 1: 0, 1, 2
+  vertData[o]    = x0; vertData[o+1]  = y0; vertData[o+2]  = z0;
+  vertData[o+3]  = nx; vertData[o+4]  = ny; vertData[o+5]  = nz;
+  vertData[o+6]  = r;  vertData[o+7]  = g;  vertData[o+8]  = b;
+  vertData[o+9]  = 0;  vertData[o+10] = 0;
+
+  vertData[o+11] = x1; vertData[o+12] = y1; vertData[o+13] = z1;
+  vertData[o+14] = nx; vertData[o+15] = ny; vertData[o+16] = nz;
+  vertData[o+17] = r;  vertData[o+18] = g;  vertData[o+19] = b;
+  vertData[o+20] = 1;  vertData[o+21] = 0;
+
+  vertData[o+22] = x2; vertData[o+23] = y2; vertData[o+24] = z2;
+  vertData[o+25] = nx; vertData[o+26] = ny; vertData[o+27] = nz;
+  vertData[o+28] = r;  vertData[o+29] = g;  vertData[o+30] = b;
+  vertData[o+31] = 1;  vertData[o+32] = 1;
+
+  // Tri 2: 0, 2, 3
+  vertData[o+33] = x0; vertData[o+34] = y0; vertData[o+35] = z0;
+  vertData[o+36] = nx; vertData[o+37] = ny; vertData[o+38] = nz;
+  vertData[o+39] = r;  vertData[o+40] = g;  vertData[o+41] = b;
+  vertData[o+42] = 0;  vertData[o+43] = 0;
+
+  vertData[o+44] = x2; vertData[o+45] = y2; vertData[o+46] = z2;
+  vertData[o+47] = nx; vertData[o+48] = ny; vertData[o+49] = nz;
+  vertData[o+50] = r;  vertData[o+51] = g;  vertData[o+52] = b;
+  vertData[o+53] = 1;  vertData[o+54] = 1;
+
+  vertData[o+55] = x3; vertData[o+56] = y3; vertData[o+57] = z3;
+  vertData[o+58] = nx; vertData[o+59] = ny; vertData[o+60] = nz;
+  vertData[o+61] = r;  vertData[o+62] = g;  vertData[o+63] = b;
+  vertData[o+64] = 0;  vertData[o+65] = 1;
+
+  vertCount += 6;
+}
+
 function pushBox(x, y, z, sx, sy, sz, rgb, rotY = 0) {
-  if (vertCount + 36 >= MAX_VERTS) return;
+  if (vertCount + 30 >= MAX_VERTS) return;
   const cosR = rotY === 0 ? 1 : Math.cos(rotY);
   const sinR = rotY === 0 ? 0 : Math.sin(rotY);
   const r = rgb[0], g = rgb[1], b = rgb[2];
 
+  // Skip f === 1 (bottom face [0,-1,0]) since camera is always above the garden
   for (let f = 0; f < 6; f++) {
+    if (f === 1) continue;
     const face = CUBE_FACES[f];
     const nx = face.n[0] * cosR + face.n[2] * sinR;
     const ny = face.n[1];
     const nz = -face.n[0] * sinR + face.n[2] * cosR;
+    const v = face.v;
 
-    for (let idx = 0; idx < 6; idx++) {
-      const vi = FACE_INDICES[idx];
-      const fv = face.v[vi];
-      const uv = FACE_UVS[vi];
-      const lx = fv[0] * sx;
-      const ly = fv[1] * sy;
-      const lz = fv[2] * sz;
+    const lx0 = v[0][0] * sx, ly0 = v[0][1] * sy, lz0 = v[0][2] * sz;
+    const lx1 = v[1][0] * sx, ly1 = v[1][1] * sy, lz1 = v[1][2] * sz;
+    const lx2 = v[2][0] * sx, ly2 = v[2][1] * sy, lz2 = v[2][2] * sz;
+    const lx3 = v[3][0] * sx, ly3 = v[3][1] * sy, lz3 = v[3][2] * sz;
 
-      const wx = x + (lx * cosR + lz * sinR);
-      const wy = y + ly;
-      const wz = z + (-lx * sinR + lz * cosR);
-
-      let o = vertCount * 11;
-      vertData[o]     = wx;
-      vertData[o + 1] = wy;
-      vertData[o + 2] = wz;
-      vertData[o + 3] = nx;
-      vertData[o + 4] = ny;
-      vertData[o + 5] = nz;
-      vertData[o + 6] = r;
-      vertData[o + 7] = g;
-      vertData[o + 8] = b;
-      vertData[o + 9] = uv[0];
-      vertData[o + 10] = uv[1];
-      vertCount++;
-    }
+    emitQuad(
+      x + lx0 * cosR + lz0 * sinR, y + ly0, z - lx0 * sinR + lz0 * cosR,
+      x + lx1 * cosR + lz1 * sinR, y + ly1, z - lx1 * sinR + lz1 * cosR,
+      x + lx2 * cosR + lz2 * sinR, y + ly2, z - lx2 * sinR + lz2 * cosR,
+      x + lx3 * cosR + lz3 * sinR, y + ly3, z - lx3 * sinR + lz3 * cosR,
+      nx, ny, nz, r, g, b
+    );
   }
 }
 
@@ -799,38 +777,20 @@ function pushBillboardQuad(cx, cy, cz, w, h, rgb) {
   const nLen = Math.hypot(nx, ny, nz) || 1.0;
   const nnx = nx / nLen, nny = ny / nLen, nnz = nz / nLen;
 
-  const r = rgb[0], g = rgb[1], b = rgb[2];
-
-  const corners = [
-    [cx - rx, cy - uy, cz - rz, 0, 0],
-    [cx + rx, cy - uy, cz + rz, 1, 0],
-    [cx + rx, cy + uy, cz + rz, 1, 1],
-    [cx - rx, cy + uy, cz - rz, 0, 1]
-  ];
-  const idxMap = [0, 1, 2, 0, 2, 3];
-  for (let i = 0; i < 6; i++) {
-    const c = corners[idxMap[i]];
-    let o = vertCount * 11;
-    vertData[o]     = c[0];
-    vertData[o + 1] = c[1];
-    vertData[o + 2] = c[2];
-    vertData[o + 3] = nnx;
-    vertData[o + 4] = nny;
-    vertData[o + 5] = nnz;
-    vertData[o + 6] = r;
-    vertData[o + 7] = g;
-    vertData[o + 8] = b;
-    vertData[o + 9] = c[3];
-    vertData[o + 10] = c[4];
-    vertCount++;
-  }
+  emitQuad(
+    cx - rx, cy - uy, cz - rz,
+    cx + rx, cy - uy, cz + rz,
+    cx + rx, cy + uy, cz + rz,
+    cx - rx, cy + uy, cz - rz,
+    nnx, nny, nnz, rgb[0], rgb[1], rgb[2]
+  );
 }
 
 function hex(h) {
   return [((h >> 16) & 255) / 255, ((h >> 8) & 255) / 255, (h & 255) / 255];
 }
 
-// Initialize Blender 3D Voxel Models & Shape Key Buffers
+// Initialize Blender 3D Voxel Models, pre-cull hidden underground/bottom quads & prepare Shape Key Buffers
 if (typeof VOXEL_MODELS !== 'undefined') {
   for (const name of Object.keys(VOXEL_MODELS)) {
     const mdl = VOXEL_MODELS[name];
@@ -842,6 +802,27 @@ if (typeof VOXEL_MODELS !== 'undefined') {
         mdl.skData[k] = new Float32Array(mdl.sk[k]);
       }
     }
+    // Pre-filter invisible downward-facing & buried underground quads once at startup
+    const rawQ = mdl.q;
+    const filteredQ = [];
+    const isGrass = name === 'Grass_Block';
+    for (let qi = 0; qi < rawQ.length; qi += 8) {
+      const qny = rawQ[qi + 5];
+      const y0 = mdl.baseV[rawQ[qi] * 3 + 1];
+      const y1 = mdl.baseV[rawQ[qi + 1] * 3 + 1];
+      const y2 = mdl.baseV[rawQ[qi + 2] * 3 + 1];
+      const y3 = mdl.baseV[rawQ[qi + 3] * 3 + 1];
+      const maxY = Math.max(y0, y1, y2, y3);
+      // Grass_Block quads with maxY <= 0.55 are buried inside the solid soil foundation slab;
+      // Downward-facing quads (qny < -0.95) at ground base (maxY <= 0.02) are never visible from above.
+      if (isGrass && (maxY <= 0.55 || qny < -0.95)) continue;
+      if (!isGrass && qny < -0.95 && maxY <= 0.02) continue;
+      filteredQ.push(
+        rawQ[qi], rawQ[qi + 1], rawQ[qi + 2], rawQ[qi + 3],
+        rawQ[qi + 4], rawQ[qi + 5], rawQ[qi + 6], rawQ[qi + 7]
+      );
+    }
+    mdl.q = new Float32Array(filteredQ);
   }
 }
 
@@ -872,7 +853,7 @@ function pushBlenderModel(name, wx, wy, wz, sx, sy, sz, rotY = 0, weights = null
   const numQuads = quads.length >> 3;
   if (vertCount + numQuads * 6 >= MAX_VERTS) return;
 
-  const workV = deformModelVertices(mdl, weights);
+  const workV = weights ? deformModelVertices(mdl, weights) : mdl.baseV;
   const mats = mdl.m;
   const cosR = rotY === 0 ? 1 : Math.cos(rotY);
   const sinR = rotY === 0 ? 0 : Math.sin(rotY);
@@ -897,34 +878,28 @@ function pushBlenderModel(name, wx, wy, wz, sx, sy, sz, rotY = 0, weights = null
       b = b * (1 - tintMix) + tintRgb[2] * tintMix;
     }
 
-    for (let idx = 0; idx < 6; idx++) {
-      const corner = FACE_INDICES[idx];
-      const vi = quads[qi + corner] * 3;
-      const uv = FACE_UVS[corner];
+    const i0 = quads[qi] * 3;
+    const i1 = quads[qi + 1] * 3;
+    const i2 = quads[qi + 2] * 3;
+    const i3 = quads[qi + 3] * 3;
 
-      const lx = workV[vi] * sx;
-      const ly = workV[vi + 1] * sy;
-      const lz = workV[vi + 2] * sz;
+    const lx0 = workV[i0] * sx, ly0 = workV[i0 + 1] * sy, lz0 = workV[i0 + 2] * sz;
+    const lx1 = workV[i1] * sx, ly1 = workV[i1 + 1] * sy, lz1 = workV[i1 + 2] * sz;
+    const lx2 = workV[i2] * sx, ly2 = workV[i2 + 1] * sy, lz2 = workV[i2 + 2] * sz;
+    const lx3 = workV[i3] * sx, ly3 = workV[i3 + 1] * sy, lz3 = workV[i3 + 2] * sz;
 
-      let o = vertCount * 11;
-      vertData[o]     = wx + (lx * cosR + lz * sinR);
-      vertData[o + 1] = wy + ly;
-      vertData[o + 2] = wz + (-lx * sinR + lz * cosR);
-      vertData[o + 3] = nx;
-      vertData[o + 4] = ny;
-      vertData[o + 5] = nz;
-      vertData[o + 6] = r;
-      vertData[o + 7] = g;
-      vertData[o + 8] = b;
-      vertData[o + 9] = uv[0];
-      vertData[o + 10] = uv[1];
-      vertCount++;
-    }
+    emitQuad(
+      wx + lx0 * cosR + lz0 * sinR, wy + ly0, wz - lx0 * sinR + lz0 * cosR,
+      wx + lx1 * cosR + lz1 * sinR, wy + ly1, wz - lx1 * sinR + lz1 * cosR,
+      wx + lx2 * cosR + lz2 * sinR, wy + ly2, wz - lx2 * sinR + lz2 * cosR,
+      wx + lx3 * cosR + lz3 * sinR, wy + ly3, wz - lx3 * sinR + lz3 * cosR,
+      nx, ny, nz, r, g, b
+    );
   }
 }
 
 // =========================================================================
-// 4. GARDEN MAP & TOWER / CATERPILLAR DEFINITIONS
+// 4. GARDEN MAP & O(1) PRECOMPUTED PATH LOOKUP TABLE
 // =========================================================================
 const GRID_W = 12;
 const GRID_H = 8;
@@ -977,7 +952,7 @@ for (let i = 0; i < worldWaypoints.length - 1; i++) {
   totalPathLength += len;
 }
 
-function samplePath(dist) {
+function _rawSamplePath(dist) {
   const d = Math.max(0, Math.min(totalPathLength, dist));
   for (let i = 0; i < pathSegments.length; i++) {
     const seg = pathSegments[i];
@@ -992,11 +967,11 @@ function samplePath(dist) {
   return { x: worldWaypoints[0].x, z: worldWaypoints[0].z, angle: 0 };
 }
 
-function samplePathSmooth(dist) {
+function _rawSamplePathSmooth(dist) {
   const delta = 0.22;
-  const pA = samplePath(dist - delta);
-  const pB = samplePath(dist + delta);
-  const pM = samplePath(dist);
+  const pA = _rawSamplePath(dist - delta);
+  const pB = _rawSamplePath(dist + delta);
+  const pM = _rawSamplePath(dist);
   const dx = pB.x - pA.x;
   const dz = pB.z - pA.z;
   const angle = (Math.abs(dx) > 1e-4 || Math.abs(dz) > 1e-4)
@@ -1007,6 +982,43 @@ function samplePathSmooth(dist) {
     z: pM.z * 0.65 + (pA.z + pB.z) * 0.175,
     angle
   };
+}
+
+// Pre-bake 4096-entry 1D Lookup Table covering [-1.0, totalPathLength + 1.0]
+// Eliminates ~50,000 trig calls and ~40,000 object allocations per frame!
+const PATH_LUT_SIZE = 4096;
+const PATH_LUT_MIN = -1.0;
+const PATH_LUT_MAX = totalPathLength + 1.0;
+const PATH_LUT_SCALE = (PATH_LUT_SIZE - 1) / (PATH_LUT_MAX - PATH_LUT_MIN);
+const pathLutX = new Float32Array(PATH_LUT_SIZE);
+const pathLutZ = new Float32Array(PATH_LUT_SIZE);
+const pathLutAngle = new Float32Array(PATH_LUT_SIZE);
+const pathLutCos = new Float32Array(PATH_LUT_SIZE);
+const pathLutSin = new Float32Array(PATH_LUT_SIZE);
+
+for (let i = 0; i < PATH_LUT_SIZE; i++) {
+  const d = PATH_LUT_MIN + (i / (PATH_LUT_SIZE - 1)) * (PATH_LUT_MAX - PATH_LUT_MIN);
+  const sm = _rawSamplePathSmooth(d);
+  pathLutX[i] = sm.x;
+  pathLutZ[i] = sm.z;
+  pathLutAngle[i] = sm.angle;
+  pathLutCos[i] = Math.cos(sm.angle);
+  pathLutSin[i] = Math.sin(sm.angle);
+}
+
+const _sharedPathResult = { x: 0, z: 0, angle: 0 };
+function samplePath(dist) {
+  let idx = ((dist - PATH_LUT_MIN) * PATH_LUT_SCALE) | 0;
+  if (idx < 0) idx = 0;
+  else if (idx >= PATH_LUT_SIZE) idx = PATH_LUT_SIZE - 1;
+  _sharedPathResult.x = pathLutX[idx];
+  _sharedPathResult.z = pathLutZ[idx];
+  _sharedPathResult.angle = pathLutAngle[idx];
+  return _sharedPathResult;
+}
+
+function samplePathSmooth(dist) {
+  return samplePath(dist);
 }
 
 const grassDecor = [];
@@ -1168,8 +1180,11 @@ function pulseDewWarning() {
   setTimeout(() => pill.classList.remove('pulse-warn'), 420);
 }
 
+const MAX_PARTICLES = 110;
 function spawnParticles(x, y, z, color, count = 8, speed = 2.4) {
-  for (let i = 0; i < count; i++) {
+  const n = isMobileDevice ? Math.ceil(count * 0.65) : count;
+  for (let i = 0; i < n; i++) {
+    if (particles.length >= MAX_PARTICLES) break;
     const a = Math.random() * Math.PI * 2;
     const v = (0.4 + Math.random() * 0.8) * speed;
     particles.push({
@@ -1960,10 +1975,14 @@ function updateSimulation(dt) {
     if (spawnTimer <= 0) {
       const next = spawnQueue.shift();
       logRumble = 1.0;
+      const startP = samplePath(0);
       caterpillars.push({
         modelName: next.modelName || 'Green_Inchworm',
         scale: next.scale || 0.56,
         dist: 0,
+        hx: startP.x,
+        hz: startP.z,
+        dead: false,
         speed: next.speed,
         hp: next.hp,
         maxHp: next.hp,
@@ -1994,8 +2013,9 @@ function updateSimulation(dt) {
 
     if (cat.dist >= totalPathLength) {
       const endPt = worldWaypoints[worldWaypoints.length - 1];
-      spawnParticles(endPt.x, 0.4, endPt.z, hex(0xf43f5e), 14, 2.8);
+      spawnParticles(endPt.x, 0.4, endPt.z, hex(0xf43f5e), 10, 2.6);
       sfx.play('bite');
+      cat.dead = true;
       caterpillars.splice(i, 1);
       lives = Math.max(0, lives - 1);
       updateUI();
@@ -2003,6 +2023,10 @@ function updateSimulation(dt) {
         showGameOver('defeat');
         return;
       }
+    } else {
+      const hp = samplePath(cat.dist);
+      cat.hx = hp.x;
+      cat.hz = hp.z;
     }
   }
 
@@ -2032,6 +2056,7 @@ function updateSimulation(dt) {
     const t = towers[i];
     const base = PLANT_TYPES[t.typeIdx];
     const st = getTowerStats(t);
+    const rangeSq = st.range * st.range;
     if (t.cooldown > 0) t.cooldown -= dt;
     if (t.recoil > 0) t.recoil = Math.max(0, t.recoil - dt * 3.8);
 
@@ -2039,17 +2064,16 @@ function updateSimulation(dt) {
     let bestDist = -1;
     for (let j = 0; j < caterpillars.length; j++) {
       const cat = caterpillars[j];
-      const headPos = samplePath(cat.dist);
-      const d = Math.hypot(headPos.x - t.wx, headPos.z - t.wz);
-      if (d <= st.range && cat.dist > bestDist) {
+      const dx = cat.hx - t.wx;
+      const dz = cat.hz - t.wz;
+      if (dx * dx + dz * dz <= rangeSq && cat.dist > bestDist) {
         bestDist = cat.dist;
         bestCat = cat;
       }
     }
 
     if (bestCat) {
-      const headPos = samplePath(bestCat.dist);
-      t.aimAngle = Math.atan2(headPos.x - t.wx, headPos.z - t.wz);
+      t.aimAngle = Math.atan2(bestCat.hx - t.wx, bestCat.hz - t.wz);
       if (t.cooldown <= 0) {
         t.cooldown = st.fireRate;
         t.recoil = 1.0;
@@ -2059,8 +2083,8 @@ function updateSimulation(dt) {
           y: 0.55 + (t.level - 1) * 0.1,
           z: t.wz + Math.cos(t.aimAngle) * 0.25,
           target: bestCat,
-          tx: headPos.x,
-          tz: headPos.z,
+          tx: bestCat.hx,
+          tz: bestCat.hz,
           speed: base.projSpeed,
           dmg: st.damage,
           splash: base.splash,
@@ -2073,26 +2097,27 @@ function updateSimulation(dt) {
 
   for (let i = projectiles.length - 1; i >= 0; i--) {
     const p = projectiles[i];
-    if (p.target && caterpillars.includes(p.target)) {
-      const hp = samplePath(p.target.dist);
-      p.tx = hp.x;
-      p.tz = hp.z;
+    if (p.target && !p.target.dead) {
+      p.tx = p.target.hx;
+      p.tz = p.target.hz;
     }
     const dx = p.tx - p.x;
     const dz = p.tz - p.z;
     const dist = Math.hypot(dx, dz);
     const step = p.speed * dt;
     if (dist <= step + 0.12) {
-      spawnParticles(p.tx, 0.3, p.tz, p.color, p.splash > 0 ? 12 : 5, p.splash > 0 ? 2.6 : 1.6);
+      spawnParticles(p.tx, 0.3, p.tz, p.color, p.splash > 0 ? 8 : 4, p.splash > 0 ? 2.4 : 1.5);
       if (p.splash > 0) {
+        const splashSq = p.splash * p.splash;
         for (let j = caterpillars.length - 1; j >= 0; j--) {
           const cat = caterpillars[j];
-          const cp = samplePath(cat.dist);
-          if (Math.hypot(cp.x - p.tx, cp.z - p.tz) <= p.splash) {
+          const cdx = cat.hx - p.tx;
+          const cdz = cat.hz - p.tz;
+          if (cdx * cdx + cdz * cdz <= splashSq) {
             damageCaterpillar(cat, p.dmg, p.slow);
           }
         }
-      } else if (p.target && caterpillars.includes(p.target)) {
+      } else if (p.target && !p.target.dead) {
         damageCaterpillar(p.target, p.dmg, p.slow);
       }
       projectiles.splice(i, 1);
@@ -2121,6 +2146,7 @@ function updateSimulation(dt) {
 }
 
 function damageCaterpillar(cat, dmg, slowAmount) {
+  if (cat.dead) return;
   const prevSegs = Math.max(1, Math.ceil((cat.hp / cat.maxHp) * cat.segments));
   cat.hp -= dmg;
   cat.hitFlash = 1.0;
@@ -2129,14 +2155,14 @@ function damageCaterpillar(cat, dmg, slowAmount) {
   const newSegs = Math.max(1, Math.ceil((Math.max(0, cat.hp) / cat.maxHp) * cat.segments));
   if (newSegs < prevSegs && cat.hp > 0) {
     const tailPos = samplePath(Math.max(0, cat.dist - 0.25));
-    spawnParticles(tailPos.x, 0.25, tailPos.z, cat.color, 6, 2.1);
+    spawnParticles(tailPos.x, 0.25, tailPos.z, cat.color, 4, 2.0);
   }
 
   if (cat.hp <= 0) {
+    cat.dead = true;
     const idx = caterpillars.indexOf(cat);
     if (idx !== -1) {
-      const headPos = samplePath(cat.dist);
-      spawnParticles(headPos.x, 0.3, headPos.z, cat.color, 12, 2.7);
+      spawnParticles(cat.hx, 0.3, cat.hz, cat.color, 8, 2.5);
       caterpillars.splice(idx, 1);
       dew += cat.reward;
       sfx.play('pop');
@@ -2194,12 +2220,14 @@ function buildStaticTerrain() {
   const staticData = vertData.slice(0, staticVertCount * 11);
   gl.bindBuffer(gl.ARRAY_BUFFER, staticVbo);
   gl.bufferData(gl.ARRAY_BUFFER, staticData, gl.STATIC_DRAW);
+  gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+  gl.bufferData(gl.ARRAY_BUFFER, MAX_VERTS * 11 * 4, gl.DYNAMIC_DRAW);
   vertCount = 0;
 }
 buildStaticTerrain();
 
 function drawRangeRing(cx, cz, radius, color) {
-  const segs = 36;
+  const segs = 28;
   for (let i = 0; i < segs; i++) {
     const a = (i / segs) * Math.PI * 2;
     const rx = cx + Math.cos(a) * radius;
@@ -2300,30 +2328,38 @@ function drawCaterpillarBlenderModel(cat) {
   const mats = mdl.m;
   const sc = cat.scale || 0.56;
 
-  // Pre-transform deformed vertices along the curved garden path spine!
+  // Fast O(1) LUT spine vertex transform (zero trig calls & zero object allocations)
   const numVerts = workV.length / 3;
   if (!mdl.worldV || mdl.worldV.length < workV.length) {
     mdl.worldV = new Float32Array(workV.length);
   }
   const worldV = mdl.worldV;
+  const baseDistOffset = cat.dist - PATH_LUT_MIN;
   for (let v = 0; v < numVerts; v++) {
     const vi = v * 3;
     const lx = workV[vi] * sc;
     const ly = workV[vi + 1] * sc;
     const lz = workV[vi + 2] * sc;
 
-    const spinePos = samplePathSmooth(cat.dist + lz);
-    const cosA = Math.cos(spinePos.angle);
-    const sinA = Math.sin(spinePos.angle);
+    let lutIdx = ((baseDistOffset + lz) * PATH_LUT_SCALE) | 0;
+    if (lutIdx < 0) lutIdx = 0;
+    else if (lutIdx >= PATH_LUT_SIZE) lutIdx = PATH_LUT_SIZE - 1;
 
-    worldV[vi]     = spinePos.x + lx * cosA;
+    const cosA = pathLutCos[lutIdx];
+    const sinA = pathLutSin[lutIdx];
+
+    worldV[vi]     = pathLutX[lutIdx] + lx * cosA;
     worldV[vi + 1] = -0.05 + ly;
-    worldV[vi + 2] = spinePos.z - lx * sinA;
+    worldV[vi + 2] = pathLutZ[lutIdx] - lx * sinA;
   }
 
-  const centerPos = samplePathSmooth(cat.dist);
-  const cosC = Math.cos(centerPos.angle);
-  const sinC = Math.sin(centerPos.angle);
+  let cIdx = (baseDistOffset * PATH_LUT_SCALE) | 0;
+  if (cIdx < 0) cIdx = 0;
+  else if (cIdx >= PATH_LUT_SIZE) cIdx = PATH_LUT_SIZE - 1;
+  const centerPosX = pathLutX[cIdx];
+  const centerPosZ = pathLutZ[cIdx];
+  const cosC = pathLutCos[cIdx];
+  const sinC = pathLutSin[cIdx];
 
   let tintRgb = null;
   let tintMix = 0.0;
@@ -2353,25 +2389,18 @@ function drawCaterpillarBlenderModel(cat) {
       b = b * (1 - tintMix) + tintRgb[2] * tintMix;
     }
 
-    for (let idx = 0; idx < 6; idx++) {
-      const corner = FACE_INDICES[idx];
-      const vi = quads[qi + corner] * 3;
-      const uv = FACE_UVS[corner];
+    const i0 = quads[qi] * 3;
+    const i1 = quads[qi + 1] * 3;
+    const i2 = quads[qi + 2] * 3;
+    const i3 = quads[qi + 3] * 3;
 
-      let o = vertCount * 11;
-      vertData[o]     = worldV[vi];
-      vertData[o + 1] = worldV[vi + 1];
-      vertData[o + 2] = worldV[vi + 2];
-      vertData[o + 3] = nx;
-      vertData[o + 4] = ny;
-      vertData[o + 5] = nz;
-      vertData[o + 6] = r;
-      vertData[o + 7] = g;
-      vertData[o + 8] = b;
-      vertData[o + 9] = uv[0];
-      vertData[o + 10] = uv[1];
-      vertCount++;
-    }
+    emitQuad(
+      worldV[i0], worldV[i0 + 1], worldV[i0 + 2],
+      worldV[i1], worldV[i1 + 1], worldV[i1 + 2],
+      worldV[i2], worldV[i2 + 1], worldV[i2 + 2],
+      worldV[i3], worldV[i3 + 1], worldV[i3 + 2],
+      nx, ny, nz, r, g, b
+    );
   }
 
   // Clean camera-facing billboard health bar when damaged
@@ -2386,17 +2415,13 @@ function drawCaterpillarBlenderModel(cat) {
     const rx = Math.cos(camYaw);
     const rz = -Math.sin(camYaw);
 
-    // 1. Dark border plate (faces camera)
-    pushBillboardQuad(centerPos.x, barY, centerPos.z, barW + 0.04, barH + 0.03, [0.06, 0.09, 0.16]);
+    pushBillboardQuad(centerPosX, barY, centerPosZ, barW + 0.04, barH + 0.03, [0.06, 0.09, 0.16]);
+    pushBillboardQuad(centerPosX + fwdX * 0.004, barY, centerPosZ + fwdZ * 0.004, barW, barH, [0.15, 0.20, 0.26]);
 
-    // 2. Dark background trough
-    pushBillboardQuad(centerPos.x + fwdX * 0.004, barY, centerPos.z + fwdZ * 0.004, barW, barH, [0.15, 0.20, 0.26]);
-
-    // 3. Colored health fill anchored to the left
     const fillW = Math.max(0.015, barW * ratio);
     const shift = (fillW - barW) * 0.5;
-    const fillX = centerPos.x + rx * shift + fwdX * 0.01;
-    const fillZ = centerPos.z + rz * shift + fwdZ * 0.01;
+    const fillX = centerPosX + rx * shift + fwdX * 0.01;
+    const fillZ = centerPosZ + rz * shift + fwdZ * 0.01;
     const hpCol = ratio > 0.5 ? [0.22, 0.85, 0.45] : (ratio > 0.25 ? [0.98, 0.78, 0.15] : [0.95, 0.25, 0.35]);
     pushBillboardQuad(fillX, barY, fillZ, fillW, barH * 0.82, hpCol);
   }
@@ -2451,14 +2476,6 @@ function updateDynamicPointLights(time) {
 }
 
 function renderScene(time) {
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const targetW = Math.max(1, Math.floor((canvas.clientWidth || window.innerWidth || 800) * dpr));
-  const targetH = Math.max(1, Math.floor((canvas.clientHeight || window.innerHeight || 600) * dpr));
-  if (canvas.width !== targetW || canvas.height !== targetH) {
-    canvas.width = targetW;
-    canvas.height = targetH;
-  }
-
   updateCameraMatrices();
 
   // 1. Build dynamic animated models into vertData & upload once to vbo
@@ -2548,7 +2565,7 @@ function renderScene(time) {
   gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
   gl.bufferSubData(gl.ARRAY_BUFFER, 0, vertData.subarray(0, vertCount * 11));
 
-  // 2. PASS 1: Render 2048x2048 Directional Sun Shadow Map
+  // 2. PASS 1: Render 1024x1024 Directional Sun Shadow Map (Dynamic shadow-casters only!)
   gl.bindFramebuffer(gl.FRAMEBUFFER, shadowFbo);
   gl.viewport(0, 0, SHADOW_RES, SHADOW_RES);
   gl.clearColor(1.0, 1.0, 1.0, 1.0);
@@ -2557,18 +2574,13 @@ function renderScene(time) {
   gl.useProgram(shadowProg);
   gl.uniformMatrix4fv(shadowLightVPLoc, false, lightVPMatrix);
 
-  if (staticVertCount > 0) {
-    gl.bindBuffer(gl.ARRAY_BUFFER, staticVbo);
-    bindShadowAttribs();
-    gl.drawArrays(gl.TRIANGLES, 0, staticVertCount);
-  }
   if (vertCount > 0) {
     gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
     bindShadowAttribs();
     gl.drawArrays(gl.TRIANGLES, 0, vertCount);
   }
 
-  // 3. PASS 2: Render Main Lit Scene with Stylized PBR, 3x3 PCF Soft Shadows & Dynamic Point Lights
+  // 3. PASS 2: Render Main Lit Scene with Stylized PBR, 4-Tap Soft Shadows & Dynamic Point Lights
   updateDynamicPointLights(time);
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -2603,7 +2615,8 @@ function renderScene(time) {
 // 10. RESIZE & MAIN ANIMATION LOOP
 // =========================================================================
 function resize() {
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const maxDpr = isMobileDevice ? 1.35 : 1.75;
+  const dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
   canvas.width = Math.max(1, Math.floor((canvas.clientWidth || window.innerWidth || 800) * dpr));
   canvas.height = Math.max(1, Math.floor((canvas.clientHeight || window.innerHeight || 600) * dpr));
 }
