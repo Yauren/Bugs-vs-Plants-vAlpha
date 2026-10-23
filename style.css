@@ -41,25 +41,43 @@ html, body {
 /* =========================================================================
    RESPONSIVE TOP HUD BAR
    ========================================================================= */
-#topHud {
+#topBar {
   position: fixed;
   top: max(10px, env(safe-area-inset-top, 10px));
   left: 50%;
   transform: translateX(-50%);
   z-index: 25;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 8px 12px;
-  padding: 8px 14px;
-  border-radius: 22px;
+  gap: 10px;
   width: max-content;
   max-width: calc(100vw - 16px);
 }
 
-.hud-stats-group,
-.hud-actions-group {
+#topHud {
+  display: flex;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 8px 14px;
+  border-radius: 22px;
+}
+
+#actionDock {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 22px;
+}
+
+.hud-quick-toggles {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hud-stats-group {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -429,19 +447,205 @@ html, body {
 }
 
 /* =========================================================================
-   MOBILE & SMALL TABLET ADAPTATIONS (< 640px)
+   TWO-THUMB MOBILE LANDSCAPE LAYOUT (PHONES & COMPACT SCREENS IN LANDSCAPE)
    ========================================================================= */
-@media (max-width: 639px) {
+@media (max-height: 540px) and (orientation: landscape), (max-width: 932px) and (orientation: landscape) and (max-height: 540px) {
+  #topBar {
+    display: contents !important;
+  }
+
   .hide-mobile {
     display: none !important;
   }
   .hide-xs {
-    display: none;
+    display: none !important;
+  }
+
+  /* 1. Slim Minimalist Top HUD Bar (Stats Only) */
+  #topHud {
+    position: fixed !important;
+    top: max(6px, env(safe-area-inset-top, 6px)) !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    z-index: 25;
+    padding: 4px 12px;
+    border-radius: 9999px;
+    gap: 8px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+    width: max-content;
+  }
+  .hud-stats-group {
+    gap: 8px;
+  }
+  .hud-stat {
+    gap: 5px;
+  }
+  .hud-icon {
+    width: 20px;
+    height: 20px;
+  }
+  .hud-val {
+    font-size: 0.82rem;
+  }
+  .hud-divider {
+    height: 14px;
+  }
+
+  /* 2. Left-Thumb Vertical Plant Dock */
+  #plantDock {
+    position: fixed !important;
+    left: max(8px, env(safe-area-inset-left, 8px)) !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    bottom: auto !important;
+    z-index: 25;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 5px !important;
+    padding: 6px !important;
+    border-radius: 18px !important;
+    width: auto !important;
+    max-width: 145px !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+  }
+  .plant-btn {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 7px !important;
+    padding: 4px 8px !important;
+    border-radius: 12px !important;
+    min-width: 100px !important;
+    text-align: left !important;
+  }
+  .plant-btn.selected {
+    transform: translateX(4px) !important;
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.4) !important;
+  }
+  .plant-icon-box {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 10px !important;
+    padding: 2px !important;
+  }
+  .plant-title {
+    font-size: 0.70rem !important;
+    font-weight: 800 !important;
+  }
+  .plant-cost {
+    font-size: 0.66rem !important;
+    margin-top: 1px !important;
+  }
+  .plant-role {
+    display: none !important;
+  }
+
+  /* 3. Right-Thumb Vertical Action Controls Dock */
+  #actionDock {
+    position: fixed !important;
+    right: max(8px, env(safe-area-inset-right, 8px)) !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    z-index: 25;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 6px !important;
+    padding: 7px !important;
+    border-radius: 18px !important;
+    width: 110px !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+  }
+  .hud-btn-primary {
+    padding: 8px 6px !important;
+    font-size: 0.70rem !important;
+    font-weight: 900 !important;
+    text-align: center !important;
+    border-radius: 10px !important;
+    width: 100% !important;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+  }
+  .hud-btn-secondary {
+    padding: 6px 6px !important;
+    font-size: 0.66rem !important;
+    text-align: center !important;
+    border-radius: 9px !important;
+    width: 100% !important;
+  }
+  .hud-quick-toggles {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 4px !important;
+    width: 100% !important;
+  }
+  .hud-btn-icon {
+    min-width: unset !important;
+    width: 100% !important;
+    height: 28px !important;
+    padding: 0 !important;
+    font-size: 0.72rem !important;
+    border-radius: 8px !important;
+  }
+  #resetCamMobileBtn {
+    display: inline-flex !important;
+  }
+
+  /* 4. Contextual Tower Menu (Bottom Center, out of thumbs' way) */
+  .tower-menu {
+    bottom: max(8px, env(safe-area-inset-bottom, 8px)) !important;
+    padding: 6px 12px !important;
+    gap: 10px !important;
+    border-radius: 16px !important;
+  }
+  .tower-menu-icon-wrap {
+    width: 36px !important;
+    height: 36px !important;
+  }
+  .tower-up-btn, .tower-sell-btn {
+    padding: 6px 10px !important;
+    font-size: 0.70rem !important;
+  }
+
+  /* 5. Toast Feedback Banner (compact under top HUD) */
+  .toast-banner {
+    top: 38px !important;
+    font-size: 0.66rem !important;
+    padding: 3px 10px !important;
+  }
+}
+
+/* =========================================================================
+   MOBILE PORTRAIT ADAPTATIONS (< 640px in portrait)
+   ========================================================================= */
+@media (max-width: 639px) and (orientation: portrait) {
+  .hide-mobile {
+    display: none !important;
+  }
+  .hide-xs {
+    display: none !important;
+  }
+  #topBar {
+    flex-direction: column !important;
+    gap: 6px !important;
+    width: calc(100vw - 16px) !important;
   }
   #topHud {
     padding: 6px 10px;
     gap: 6px 10px;
     border-radius: 18px;
+    width: 100%;
+    justify-content: center;
+  }
+  #actionDock {
+    padding: 6px 8px;
+    border-radius: 18px;
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .hud-quick-toggles {
+    display: flex;
+    gap: 4px;
   }
   .hud-icon {
     width: 22px;
@@ -465,7 +669,7 @@ html, body {
     font-size: 0.7rem;
   }
   .toast-banner {
-    top: 86px;
+    top: 104px;
     font-size: 0.69rem;
     padding: 4px 11px;
   }
@@ -504,7 +708,7 @@ html, body {
   }
 }
 
-@media (min-width: 640px) {
+@media (min-width: 640px) and (min-height: 541px) {
   .sm-hide {
     display: none !important;
   }

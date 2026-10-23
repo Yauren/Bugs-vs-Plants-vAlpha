@@ -11,52 +11,57 @@
   <!-- 3D WebGL Voxel Canvas -->
   <canvas id="gameCanvas"></canvas>
 
-  <!-- Minimalist Responsive Top HUD Bar -->
-  <div id="topHud" class="glass-pill">
-    <div class="hud-stats-group">
-      <div id="dewPill" class="hud-stat text-sky-300" title="Sun Dew (Currency)">
-        <img src="icons/sun_dew.png" class="hud-icon drop-shadow" alt="Dew" />
-        <span id="dewCount" class="hud-val">150</span>
+  <!-- Responsive Top Bar (Holds Top HUD Stats & Action Controls) -->
+  <div id="topBar">
+    <div id="topHud" class="glass-pill">
+      <div class="hud-stats-group">
+        <div id="dewPill" class="hud-stat text-sky-300" title="Sun Dew (Currency)">
+          <img src="icons/sun_dew.png" class="hud-icon drop-shadow" alt="Dew" />
+          <span id="dewCount" class="hud-val">150</span>
+        </div>
+        <div class="hud-divider"></div>
+        <div class="hud-stat text-emerald-300" title="Current Wave">
+          <img src="icons/green_inchworm.png" class="hud-icon drop-shadow" alt="Wave" />
+          <span class="hud-label">W<span class="hide-xs">ave </span><span id="waveCount" class="hud-val text-white">1</span><span class="text-white/50">/10</span></span>
+          <span id="enemyCounter" class="enemy-badge hidden">0</span>
+        </div>
+        <div class="hud-divider"></div>
+        <div id="livesPill" class="hud-stat text-rose-300" title="Prize Strawberry Health">
+          <img src="icons/prize_strawberry.png" class="hud-icon drop-shadow" alt="Lives" />
+          <span id="livesCount" class="hud-val">10</span>
+        </div>
+        <div class="hud-divider hide-xs"></div>
+        <button id="diffBadgeBtn" class="hud-pill cursor-pointer hide-xs" title="Click to Change Difficulty">
+          <span id="diffBadgeText" class="hud-val text-xs font-bold text-amber-300">Medium</span>
+        </button>
       </div>
-      <div class="hud-divider"></div>
-      <div class="hud-stat text-emerald-300" title="Current Wave">
-        <img src="icons/green_inchworm.png" class="hud-icon drop-shadow" alt="Wave" />
-        <span class="hud-label">W<span class="hide-xs">ave </span><span id="waveCount" class="hud-val text-white">1</span><span class="text-white/50">/10</span></span>
-        <span id="enemyCounter" class="enemy-badge hidden">0</span>
-      </div>
-      <div class="hud-divider"></div>
-      <div id="livesPill" class="hud-stat text-rose-300" title="Prize Strawberry Health">
-        <img src="icons/prize_strawberry.png" class="hud-icon drop-shadow" alt="Lives" />
-        <span id="livesCount" class="hud-val">10</span>
-      </div>
-      <div class="hud-divider hide-xs"></div>
-      <button id="diffBadgeBtn" class="hud-pill cursor-pointer hide-xs" title="Click to Change Difficulty">
-        <span id="diffBadgeText" class="hud-val text-xs font-bold text-amber-300">Medium</span>
-      </button>
     </div>
 
-    <div class="hud-actions-group">
+    <!-- Action Controls (Inline Top Bar on Desktop, Right-Thumb Dock in Mobile Landscape) -->
+    <div id="actionDock" class="hud-actions-group glass-pill">
       <button id="waveBtn" class="hud-btn-primary">
         START WAVE 1
       </button>
       <button id="autoWaveBtn" class="hud-btn-secondary" title="Toggle Auto Wave (A)">
         AUTO: OFF
       </button>
-      <button id="speedBtn" class="hud-btn-icon" title="Toggle Game Speed (1x / 2x)">
-        1x
-      </button>
-      <button id="pauseBtn" class="hud-btn-icon" title="Pause / Resume Game (P)">
-        ⏸
-      </button>
-      <button id="musicBtn" class="hud-btn-icon active-pill" title="Toggle Background Music (M)">
-        🎵
-      </button>
-      <button id="soundBtn" class="hud-btn-icon active-pill" title="Toggle Sound Effects">
-        🔊
-      </button>
-      <button id="resetCamMobileBtn" class="hud-btn-icon sm-hide" title="Reset Camera View">
-        🎥
-      </button>
+      <div class="hud-quick-toggles">
+        <button id="speedBtn" class="hud-btn-icon" title="Toggle Game Speed (1x / 2x)">
+          1x
+        </button>
+        <button id="pauseBtn" class="hud-btn-icon" title="Pause / Resume Game (P)">
+          ⏸
+        </button>
+        <button id="musicBtn" class="hud-btn-icon active-pill" title="Toggle Background Music (M)">
+          🎵
+        </button>
+        <button id="soundBtn" class="hud-btn-icon active-pill" title="Toggle Sound Effects">
+          🔊
+        </button>
+        <button id="resetCamMobileBtn" class="hud-btn-icon sm-hide" title="Reset Camera View">
+          🎥
+        </button>
+      </div>
     </div>
   </div>
 
@@ -216,7 +221,7 @@
     </div>
   </div>
 
-  <script src="models_data.js?v=6"></script>
-  <script src="game.js?v=6"></script>
+  <script src="models_data.js?v=7"></script>
+  <script src="game.js?v=7"></script>
 </body>
 </html>
