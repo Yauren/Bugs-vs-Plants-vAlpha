@@ -1,8 +1,23 @@
 // =========================================================================
-// 1. PURE WEBAUDIO SYNTHESIS ENGINE (ZERO-NOISE BGM & SFX FOR ALL DEVICES)
+// 1. WEBAUDIO SYNTHESIS + CRISP PERCUSSIVE SFX ENGINE (ZERO AIR-HISS)
 // =========================================================================
-// Uses 100% pure WebAudio oscillators & GainNodes (no HTMLAudioElement .ogg clones
-// or white-noise buffers, preventing the compressed-air hushing sound and DOM stalls on iPad/iOS).
+// Uses WebAudio AudioBuffers + rich dual-oscillator synthesis routed through
+// WebAudio GainNodes (never uses sfx100v2_air_01/02.ogg or white-noise hiss).
+const CC0_SFX_MANIFEST = {
+  plant:   { url: 'audio/sfx100v2_footstep_wet_01.ogg', vol: 0.75, rate: 1.15 },
+  upgrade: { url: 'audio/sfx100v2_items_01.ogg',        vol: 0.80, rate: 1.05 },
+  uproot:  { url: 'audio/sfx100v2_footstep_wet_02.ogg', vol: 0.75, rate: 0.92 },
+  select:  { url: 'audio/sfx100v2_switch_01.ogg',       vol: 0.65, rate: 1.15 },
+  // Crisp percussive pops & chimes (replaces air_01/air_02 so there is zero hushing sound)
+  shoot:   { url: 'audio/sfx100v2_wood_04.ogg',         vol: 0.75, rate: 1.35 },
+  shoot_0: { url: 'audio/sfx100v2_wood_04.ogg',         vol: 0.75, rate: 1.35 }, // Pea Sprout crisp pop
+  shoot_1: { url: 'audio/sfx100v2_glass_02.ogg',        vol: 0.70, rate: 1.30 }, // Frost Bell ice chime
+  shoot_2: { url: 'audio/sfx100v2_wood_hit_02.ogg',     vol: 0.78, rate: 1.10 }, // Puff Shroom punchy thud
+  shoot_3: { url: 'audio/sfx100v2_items_02.ogg',        vol: 0.70, rate: 1.40 }, // Sun Flora warm chime
+  pop:     { url: 'audio/sfx100v2_wood_hit_01.ogg',     vol: 0.80, rate: 1.25 },
+  bite:    { url: 'audio/sfx100v2_hit_03.ogg',          vol: 0.85, rate: 0.95 },
+  wave:    { url: 'audio/sfx100v2_items_02.ogg',        vol: 0.80, rate: 0.90 }
+};
 
 class EndlessGardenMusic {
   constructor(ctx) {
@@ -12,15 +27,15 @@ class EndlessGardenMusic {
     this.nextNoteTime = 0;
     this.timerId = null;
 
-    // Master volume gain node for clean, warm garden music
+    // Master volume gain node balanced underneath plant SFX
     this.masterGain = ctx.createGain();
-    this.masterGain.gain.setValueAtTime(0.62, ctx.currentTime);
+    this.masterGain.gain.setValueAtTime(0.38, ctx.currentTime);
     this.masterGain.connect(ctx.destination);
   }
 
   setMuted(muted) {
     if (this.masterGain && this.ctx) {
-      this.masterGain.gain.setTargetAtTime(muted ? 0.0 : 0.62, this.ctx.currentTime, 0.04);
+      this.masterGain.gain.setTargetAtTime(muted ? 0.0 : 0.38, this.ctx.currentTime, 0.04);
     }
   }
 
@@ -144,6 +159,25 @@ class SoundFX {
     this.sfxGain = null;
     this.musicEngine = null;
     this.lastPlayed = {};
+    this.buffers = {};
+    this.buffersLoaded = false;
+  }
+
+  loadBuffers() {
+    if (this.buffersLoaded || !this.ctx) return;
+    this.buffersLoaded = true;
+    for (const [key, cfg] of Object.entries(CC0_SFX_MANIFEST)) {
+      fetch(cfg.url)
+        .then(r => (r.ok ? r.arrayBuffer() : Promise.reject()))
+        .then(arr => this.ctx.decodeAudioData(arr))
+        .then(decoded => {
+          this.buffers[key] = decoded;
+        })
+        .catch(() => {
+          // Browsers without OGG Vorbis support (e.g., iOS Safari) automatically
+          // use the loud, crisp dual-oscillator WebAudio synthesizer below
+        });
+    }
   }
 
   ensureAudio() {
@@ -152,9 +186,10 @@ class SoundFX {
       if (AudioCtx) {
         this.ctx = new AudioCtx();
         this.sfxGain = this.ctx.createGain();
-        this.sfxGain.gain.setValueAtTime(0.45, this.ctx.currentTime);
+        this.sfxGain.gain.setValueAtTime(1.0, this.ctx.currentTime);
         this.sfxGain.connect(this.ctx.destination);
         this.musicEngine = new EndlessGardenMusic(this.ctx);
+        this.loadBuffers();
         if (this.musicEnabled) {
           this.musicEngine.start();
         }
@@ -206,110 +241,188 @@ class SoundFX {
     if (!this.ctx || !this.sfxGain) return;
 
     const now = this.ctx.currentTime;
-    // Throttle identical sound effects to avoid overlapping distortion during heavy waves
-    const minGap = type.startsWith('shoot') ? 0.065 : 0.04;
+    // Slight throttle only for simultaneous identical shots (40ms) so every plant shot is heard clearly
+    const minGap = type.startsWith('shoot') ? 0.042 : 0.025;
     if (this.lastPlayed[type] && now - this.lastPlayed[type] < minGap) return;
     this.lastPlayed[type] = now;
 
+    // 1. Play decoded WebAudio sample buffer if available (routed through GainNode, zero DOM overhead)
+    const cfg = CC0_SFX_MANIFEST[type];
+    const buf = this.buffers[type];
+    if (cfg && buf) {
+      try {
+        const src = this.ctx.createBufferSource();
+        const smpGain = this.ctx.createGain();
+        src.buffer = buf;
+        src.playbackRate.setValueAtTime(cfg.rate * (0.96 + Math.random() * 0.08), now);
+        smpGain.gain.setValueAtTime(cfg.vol, now);
+        src.connect(smpGain);
+        smpGain.connect(this.sfxGain);
+        src.start(now);
+      } catch (e) {}
+    }
+
+    // 2. Always play loud, crisp WebAudio synthesized layer so plant SFX cut cleanly through BGM on all devices
     const osc = this.ctx.createOscillator();
+    const osc2 = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
     osc.connect(gain);
+    osc2.connect(gain);
     gain.connect(this.sfxGain);
 
     if (type === 'plant') {
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(320, now);
-      osc.frequency.exponentialRampToValueAtTime(640, now + 0.11);
-      gain.gain.setValueAtTime(0.45, now);
-      gain.gain.linearRampToValueAtTime(0.001, now + 0.12);
+      osc.type = 'triangle';
+      osc2.type = 'sine';
+      osc.frequency.setValueAtTime(310, now);
+      osc.frequency.exponentialRampToValueAtTime(760, now + 0.13);
+      osc2.frequency.setValueAtTime(465, now);
+      osc2.frequency.exponentialRampToValueAtTime(1140, now + 0.13);
+      gain.gain.setValueAtTime(0.85, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.14);
       osc.start(now);
-      osc.stop(now + 0.12);
+      osc2.start(now);
+      osc.stop(now + 0.14);
+      osc2.stop(now + 0.14);
     } else if (type === 'upgrade') {
       osc.type = 'triangle';
-      osc.frequency.setValueAtTime(392.0, now);
-      osc.frequency.setValueAtTime(523.25, now + 0.06);
-      osc.frequency.setValueAtTime(659.25, now + 0.12);
-      gain.gain.setValueAtTime(0.50, now);
-      gain.gain.linearRampToValueAtTime(0.001, now + 0.24);
+      osc2.type = 'sine';
+      osc.frequency.setValueAtTime(440.0, now);
+      osc.frequency.setValueAtTime(554.37, now + 0.065);
+      osc.frequency.setValueAtTime(659.25, now + 0.13);
+      osc.frequency.setValueAtTime(880.0, now + 0.195);
+      osc2.frequency.setValueAtTime(880.0, now);
+      osc2.frequency.setValueAtTime(1108.73, now + 0.065);
+      osc2.frequency.setValueAtTime(1318.5, now + 0.13);
+      osc2.frequency.setValueAtTime(1760.0, now + 0.195);
+      gain.gain.setValueAtTime(0.85, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.28);
       osc.start(now);
-      osc.stop(now + 0.24);
+      osc2.start(now);
+      osc.stop(now + 0.28);
+      osc2.stop(now + 0.28);
     } else if (type === 'uproot') {
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(420, now);
-      osc.frequency.exponentialRampToValueAtTime(180, now + 0.12);
-      gain.gain.setValueAtTime(0.42, now);
-      gain.gain.linearRampToValueAtTime(0.001, now + 0.13);
+      osc.type = 'triangle';
+      osc2.type = 'sine';
+      osc.frequency.setValueAtTime(520, now);
+      osc.frequency.exponentialRampToValueAtTime(190, now + 0.14);
+      osc2.frequency.setValueAtTime(780, now);
+      osc2.frequency.exponentialRampToValueAtTime(285, now + 0.14);
+      gain.gain.setValueAtTime(0.80, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
       osc.start(now);
-      osc.stop(now + 0.13);
+      osc2.start(now);
+      osc.stop(now + 0.15);
+      osc2.stop(now + 0.15);
     } else if (type === 'select') {
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(540, now);
-      osc.frequency.exponentialRampToValueAtTime(720, now + 0.045);
-      gain.gain.setValueAtTime(0.32, now);
-      gain.gain.linearRampToValueAtTime(0.001, now + 0.05);
-      osc.start(now);
-      osc.stop(now + 0.05);
-    } else if (type === 'shoot' || type === 'shoot_0') {
-      // Pea Sprout soft melodic pop
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(480, now);
-      osc.frequency.exponentialRampToValueAtTime(210, now + 0.055);
-      gain.gain.setValueAtTime(0.28, now);
-      gain.gain.linearRampToValueAtTime(0.001, now + 0.06);
-      osc.start(now);
-      osc.stop(now + 0.06);
-    } else if (type === 'shoot_1') {
-      // Frost Bell soft crystal chime
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(880, now);
-      osc.frequency.exponentialRampToValueAtTime(1240, now + 0.07);
-      gain.gain.setValueAtTime(0.24, now);
-      gain.gain.linearRampToValueAtTime(0.001, now + 0.08);
-      osc.start(now);
-      osc.stop(now + 0.08);
-    } else if (type === 'shoot_2') {
-      // Puff Shroom gentle warm puff
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(250, now);
-      osc.frequency.exponentialRampToValueAtTime(110, now + 0.09);
-      gain.gain.setValueAtTime(0.32, now);
-      gain.gain.linearRampToValueAtTime(0.001, now + 0.10);
-      osc.start(now);
-      osc.stop(now + 0.10);
-    } else if (type === 'shoot_3') {
-      // Sun Flora warm chime
       osc.type = 'triangle';
+      osc2.type = 'sine';
       osc.frequency.setValueAtTime(580, now);
-      osc.frequency.exponentialRampToValueAtTime(780, now + 0.065);
-      gain.gain.setValueAtTime(0.26, now);
-      gain.gain.linearRampToValueAtTime(0.001, now + 0.07);
+      osc.frequency.exponentialRampToValueAtTime(860, now + 0.055);
+      osc2.frequency.setValueAtTime(1160, now);
+      osc2.frequency.exponentialRampToValueAtTime(1720, now + 0.055);
+      gain.gain.setValueAtTime(0.70, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.06);
       osc.start(now);
-      osc.stop(now + 0.07);
-    } else if (type === 'pop') {
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(260, now);
-      osc.frequency.exponentialRampToValueAtTime(560, now + 0.065);
-      gain.gain.setValueAtTime(0.38, now);
-      gain.gain.linearRampToValueAtTime(0.001, now + 0.075);
-      osc.start(now);
-      osc.stop(now + 0.075);
-    } else if (type === 'bite') {
+      osc2.start(now);
+      osc.stop(now + 0.06);
+      osc2.stop(now + 0.06);
+    } else if (type === 'shoot' || type === 'shoot_0') {
+      // Pea Sprout: crisp, punchy high-clarity cork-pop (zero air hiss!)
       osc.type = 'triangle';
-      osc.frequency.setValueAtTime(170, now);
-      osc.frequency.linearRampToValueAtTime(85, now + 0.16);
-      gain.gain.setValueAtTime(0.50, now);
-      gain.gain.linearRampToValueAtTime(0.001, now + 0.18);
+      osc2.type = 'sine';
+      osc.frequency.setValueAtTime(720, now);
+      osc.frequency.exponentialRampToValueAtTime(260, now + 0.085);
+      osc2.frequency.setValueAtTime(1080, now);
+      osc2.frequency.exponentialRampToValueAtTime(390, now + 0.085);
+      gain.gain.setValueAtTime(0.82, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.09);
       osc.start(now);
+      osc2.start(now);
+      osc.stop(now + 0.09);
+      osc2.stop(now + 0.09);
+    } else if (type === 'shoot_1') {
+      // Frost Bell: bright sparkling crystal bell chime
+      osc.type = 'triangle';
+      osc2.type = 'sine';
+      osc.frequency.setValueAtTime(980, now);
+      osc.frequency.exponentialRampToValueAtTime(1480, now + 0.10);
+      osc2.frequency.setValueAtTime(1960, now);
+      osc2.frequency.exponentialRampToValueAtTime(2460, now + 0.10);
+      gain.gain.setValueAtTime(0.76, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.11);
+      osc.start(now);
+      osc2.start(now);
+      osc.stop(now + 0.11);
+      osc2.stop(now + 0.11);
+    } else if (type === 'shoot_2') {
+      // Puff Shroom: bouncy resonant spore thump-pop (audible on small speakers, zero hiss)
+      osc.type = 'triangle';
+      osc2.type = 'sine';
+      osc.frequency.setValueAtTime(420, now);
+      osc.frequency.exponentialRampToValueAtTime(155, now + 0.11);
+      osc2.frequency.setValueAtTime(840, now);
+      osc2.frequency.exponentialRampToValueAtTime(310, now + 0.11);
+      gain.gain.setValueAtTime(0.88, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+      osc.start(now);
+      osc2.start(now);
+      osc.stop(now + 0.12);
+      osc2.stop(now + 0.12);
+    } else if (type === 'shoot_3') {
+      // Sun Flora: bright golden harmonic burst
+      osc.type = 'triangle';
+      osc2.type = 'sine';
+      osc.frequency.setValueAtTime(620, now);
+      osc.frequency.exponentialRampToValueAtTime(960, now + 0.09);
+      osc2.frequency.setValueAtTime(930, now);
+      osc2.frequency.exponentialRampToValueAtTime(1440, now + 0.09);
+      gain.gain.setValueAtTime(0.78, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.10);
+      osc.start(now);
+      osc2.start(now);
+      osc.stop(now + 0.10);
+      osc2.stop(now + 0.10);
+    } else if (type === 'pop') {
+      osc.type = 'triangle';
+      osc2.type = 'sine';
+      osc.frequency.setValueAtTime(340, now);
+      osc.frequency.exponentialRampToValueAtTime(780, now + 0.085);
+      osc2.frequency.setValueAtTime(680, now);
+      osc2.frequency.exponentialRampToValueAtTime(1320, now + 0.085);
+      gain.gain.setValueAtTime(0.85, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.09);
+      osc.start(now);
+      osc2.start(now);
+      osc.stop(now + 0.09);
+      osc2.stop(now + 0.09);
+    } else if (type === 'bite') {
+      osc.type = 'sawtooth';
+      osc2.type = 'triangle';
+      osc.frequency.setValueAtTime(240, now);
+      osc.frequency.linearRampToValueAtTime(95, now + 0.16);
+      osc2.frequency.setValueAtTime(360, now);
+      osc2.frequency.linearRampToValueAtTime(140, now + 0.16);
+      gain.gain.setValueAtTime(0.85, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.18);
+      osc.start(now);
+      osc2.start(now);
       osc.stop(now + 0.18);
+      osc2.stop(now + 0.18);
     } else if (type === 'wave') {
       osc.type = 'triangle';
-      osc.frequency.setValueAtTime(261.6, now);
-      osc.frequency.setValueAtTime(329.6, now + 0.08);
-      osc.frequency.setValueAtTime(392.0, now + 0.16);
-      gain.gain.setValueAtTime(0.45, now);
-      gain.gain.linearRampToValueAtTime(0.001, now + 0.28);
+      osc2.type = 'sine';
+      osc.frequency.setValueAtTime(329.63, now);
+      osc.frequency.setValueAtTime(440.0, now + 0.08);
+      osc.frequency.setValueAtTime(554.37, now + 0.16);
+      osc2.frequency.setValueAtTime(659.25, now);
+      osc2.frequency.setValueAtTime(880.0, now + 0.08);
+      osc2.frequency.setValueAtTime(1108.73, now + 0.16);
+      gain.gain.setValueAtTime(0.82, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.28);
       osc.start(now);
+      osc2.start(now);
       osc.stop(now + 0.28);
+      osc2.stop(now + 0.28);
     }
   }
 }
